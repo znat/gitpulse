@@ -1,11 +1,25 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { primaryCategory, categoryDisplayName } from '@/lib/stories';
 import { loadStories, loadStory } from '@/lib/stories-loader';
+import { buildStoryMetadata, canonicalUrl } from '@/lib/seo';
+import { JsonLd, buildStoryJsonLd } from '@/lib/json-ld';
 import { SizeBars } from '@/components/SizeBars';
 
 export function generateStaticParams() {
   return loadStories().map((s) => ({ id: s.id }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const story = loadStory(id);
+  if (!story) return { title: 'Not found · Gitpulse' };
+  return buildStoryMetadata(story);
 }
 
 const dateFmt = new Intl.DateTimeFormat('en-US', {
@@ -32,8 +46,17 @@ export default async function StoryPage({
       ? `Merged ${dateFmt.format(new Date(story.mergedAt ?? story.committedAt))}`
       : `Pushed ${dateFmt.format(new Date(story.committedAt))}`;
 
+  const url = canonicalUrl(`/stories/${story.id}/`);
+  const ogImageUrl = canonicalUrl(`/stories/${story.id}/opengraph-image`);
+  const jsonLd = buildStoryJsonLd({
+    story,
+    canonicalUrl: url,
+    imageUrl: ogImageUrl,
+  });
+
   return (
     <main className="max-w-2xl mx-auto px-md py-2xl">
+      <JsonLd data={jsonLd} />
       <Link
         href="/"
         className="font-feed-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-accent no-underline"

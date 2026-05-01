@@ -20,6 +20,7 @@ import { TopBar } from '@/components/TopBar';
 import { Footer } from '@/components/Footer';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { loadRepo, publicationName } from '@/lib/repo';
+import { JsonLd, buildWebSiteJsonLd } from '@/lib/json-ld';
 import './globals.css';
 
 // Inlined into <head> so the theme is applied before React hydrates,
@@ -166,6 +167,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <JsonLd data={buildWebSiteJsonLd(repo)} />
       </head>
       <body className={fontVariables}>
         <ThemeProvider>
