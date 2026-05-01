@@ -1,5 +1,3 @@
-import { parseThresholds, type SizeThresholds } from './size.ts';
-
 export interface RuntimeConfig {
   repoDir: string;
   repoFullName: string;
@@ -7,8 +5,8 @@ export interface RuntimeConfig {
   branch?: string;
   bootstrapDays: number;
   limit?: number;
+  concurrency: number;
   githubToken?: string;
-  sizeThresholds: SizeThresholds;
   ai: {
     apiKey: string;
     model: string;
@@ -30,8 +28,8 @@ export function loadConfig(env = process.env): RuntimeConfig {
     branch: env.GITPULSE_BRANCH || undefined,
     bootstrapDays: Number(env.GITPULSE_BOOTSTRAP_DAYS ?? 30),
     limit: env.GITPULSE_LIMIT ? Number(env.GITPULSE_LIMIT) : undefined,
+    concurrency: Math.max(1, Number(env.GITPULSE_CONCURRENCY ?? 10)),
     githubToken: env.GITHUB_TOKEN || undefined,
-    sizeThresholds: parseThresholds(env.GITPULSE_SIZE_THRESHOLDS),
     ai: {
       apiKey,
       model: env.AI_MODEL ?? 'gpt-4o-mini',

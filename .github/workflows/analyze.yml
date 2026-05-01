@@ -23,13 +23,10 @@ on:
         description: "Sampling temperature for the LLM."
         type: number
         default: 0
-      size-thresholds:
-        description: |
-          Optional JSON overriding the size buckets used for the rule-based size pill.
-          Default: {"xs":{"maxLines":10,"maxFiles":1},"small":{"maxLines":100,"maxFiles":5},"medium":{"maxLines":500,"maxFiles":15},"large":{"maxLines":1000,"maxFiles":30}}
-          Anything above large.maxLines is xl. Provide a partial object to override a subset.
-        type: string
-        default: ""
+      concurrency:
+        description: "How many commits to analyze in parallel. Higher = faster, but watch provider rate limits."
+        type: number
+        default: 10
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -71,7 +68,7 @@ jobs:
           AI_BASE_URL: ${{ inputs.ai-base-url }}
           AI_TEMPERATURE: ${{ inputs.ai-temperature }}
           GITPULSE_BOOTSTRAP_DAYS: ${{ inputs.bootstrap-days }}
-          GITPULSE_SIZE_THRESHOLDS: ${{ inputs.size-thresholds }}
+          GITPULSE_CONCURRENCY: ${{ inputs.concurrency }}
 
       - name: Build site
         run: yarn workspace @gitpulse/site build

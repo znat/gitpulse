@@ -3,7 +3,7 @@ import { dirname } from 'node:path';
 import type { ChangesNodeOutput } from './schemas.ts';
 import type { CommitRecord, Story } from './types.ts';
 import type { PRData } from './github.ts';
-import type { SizeAssessmentOutput } from './size.ts';
+import type { SizeAssessmentOutput } from './schemas.ts';
 
 export function writeStory(outDir: string, story: Story): string {
   const path = `${outDir}/${story.id}.json`;

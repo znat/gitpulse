@@ -1,5 +1,4 @@
-import type { ChangesNodeOutput, CategoryEntry } from './schemas.ts';
-import type { SizeAssessment } from './size.ts';
+import type { ChangesNodeOutput, CategoryEntry, SizeAssessment } from './schemas.ts';
 
 export interface CommitRecord {
   sha: string;

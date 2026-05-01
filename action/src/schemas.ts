@@ -38,3 +38,20 @@ export const ChangesNodeOutputSchema = z.object({
 });
 
 export type ChangesNodeOutput = z.infer<typeof ChangesNodeOutputSchema>;
+
+// Lifted verbatim from gitsky/src/services/pr-analysis/schemas.ts
+export const SizeAssessmentSchema = z.enum([
+  'xs',
+  'small',
+  'medium',
+  'large',
+  'xl',
+]);
+
+export const SizeAssessmentOutputSchema = z.object({
+  assessment: SizeAssessmentSchema,
+  reasoning: z.string(),
+});
+
+export type SizeAssessment = z.infer<typeof SizeAssessmentSchema>;
+export type SizeAssessmentOutput = z.infer<typeof SizeAssessmentOutputSchema>;
