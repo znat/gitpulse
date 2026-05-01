@@ -96,15 +96,7 @@ export default async function StoryPage({
 
         <footer className="pt-lg border-t border-border-light font-feed-mono text-xs text-muted">
           <p>
-            by{' '}
-            {story.authorUrl ? (
-              <a href={story.authorUrl} target="_blank" rel="noopener noreferrer">
-                {story.author}
-              </a>
-            ) : (
-              story.author
-            )}{' '}
-            on {dateFmt.format(new Date(story.committedAt))}
+            by @{story.author} on {dateFmt.format(new Date(story.committedAt))}
           </p>
           {sourceUrl && (
             <p className="mt-xs">

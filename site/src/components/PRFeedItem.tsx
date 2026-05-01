@@ -69,7 +69,7 @@ export function PRFeedItem({ story, variant = 'standard', meta, unwrapped }: PRF
     <div className="flex items-center gap-2 flex-wrap font-feed-mono text-[0.75rem] text-muted">
       <span>{ref}</span>
       <span>·</span>
-      <span>by {story.author}</span>
+      <span>by @{story.author}</span>
     </div>
   );
 
