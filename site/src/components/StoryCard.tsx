@@ -40,7 +40,12 @@ export function StoryCard({ story }: { story: Story }) {
       <p className="font-mono text-xs text-muted">
         by{' '}
         {story.authorUrl ? (
-          <a href={story.authorUrl} className="text-muted">
+          <a
+            href={story.authorUrl}
+            className="text-muted"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {story.author}
           </a>
         ) : (
