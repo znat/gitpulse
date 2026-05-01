@@ -1,0 +1,14 @@
+{
+  "id": "example-merged-pr",
+  "kind": "pr",
+  "sha": "abc1234567890abc1234567890abc1234567890",
+  "author": "octocat",
+  "authorUrl": "https://github.com/octocat",
+  "committedAt": "2026-04-30T14:00:00Z",
+  "mergedAt": "2026-04-30T14:00:00Z",
+  "prNumber": 42,
+  "prUrl": "https://github.com/octocat/example/pull/42",
+  "headline": "Cache layer learns to forget what it never needed to know",
+  "standfirst": "A cleanup that should have happened a year ago, told in two paragraphs and a tidy diff.",
+  "body": "The pull request strips an entire branch of dead caching logic that hasn't been read from since the 2025 schema migration. What was once a sophisticated multi-tier eviction policy is now four lines and a comment.\n\nReviewers noted the change with relief. Tests pass. Latency on the affected endpoint drops by a measurable but undramatic margin — the kind of quiet win that doesn't make changelogs but is exactly why people read the changelog twice."
+}
