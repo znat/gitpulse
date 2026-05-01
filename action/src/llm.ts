@@ -1,7 +1,8 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { ChatAnthropic } from '@langchain/anthropic';
 import { z } from 'zod';
-import { ChangesNodeOutputSchema, type ChangesNodeOutput } from './schemas.ts';
+import { ChangesNodeOutputSchema } from './schemas.ts';
+import type { ChangesNodeOutput } from './schemas.ts';
 import { stripJsonSchemaConstraints } from './strip-schema.ts';
 import { PR_CATEGORY_KEYS } from './categories.ts';
 import type { AISummary } from './types.ts';
@@ -316,9 +317,13 @@ export function createSummarizer(config: LLMConfig) {
         }`,
       );
     }
-    // Strict zod parse against the original schema (with constraints) so we
-    // catch model violations even when MiniMax received the stripped version.
-    return ChangesNodeOutputSchema.parse(response.parsed) as ChangesNodeOutput;
+    // Trust LangChain's structured-output validation. We deliberately do NOT
+    // re-validate against the strict schema (with min/max bounds) because for
+    // MiniMax we hand the model the stripped JSON schema — re-validation
+    // against the bounded schema would reject perfectly-good outputs whose
+    // story/technicalDescription happens to exceed the soft limit. Matches
+    // gitsky's invokeStructured pattern.
+    return response.parsed as ChangesNodeOutput;
   };
 }
 
