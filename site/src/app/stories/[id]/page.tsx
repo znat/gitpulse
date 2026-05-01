@@ -47,7 +47,7 @@ export default async function StoryPage({
       : `Pushed ${dateFmt.format(new Date(story.committedAt))}`;
 
   const url = canonicalUrl(`/stories/${story.id}/`);
-  const ogImageUrl = canonicalUrl(`/stories/${story.id}/opengraph-image`);
+  const ogImageUrl = canonicalUrl(`/stories/${story.id}/opengraph-image.png`);
   const jsonLd = buildStoryJsonLd({
     story,
     canonicalUrl: url,

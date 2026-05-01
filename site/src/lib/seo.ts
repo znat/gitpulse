@@ -66,7 +66,7 @@ export function buildHomeMetadata(repo: RepoInfo = loadRepo()): Metadata {
       : publicationSubtitle(repo),
   );
   const url = canonicalUrl('/');
-  const ogImage = canonicalUrl('/opengraph-image');
+  const ogImage = canonicalUrl('/opengraph-image.png');
 
   return {
     title,
@@ -107,7 +107,7 @@ export function buildStoryMetadata(story: Story): Metadata {
   const title = buildStoryTitle(story);
   const description = truncateDescription(story.standfirst);
   const url = canonicalUrl(`/stories/${story.id}/`);
-  const ogImage = canonicalUrl(`/stories/${story.id}/opengraph-image`);
+  const ogImage = canonicalUrl(`/stories/${story.id}/opengraph-image.png`);
   const publishedTime = story.mergedAt ?? story.committedAt;
 
   return {
