@@ -23,6 +23,8 @@ export interface CategoryEntry {
   reason: string;
 }
 
+export type SizeAssessment = 'xs' | 'small' | 'medium' | 'large' | 'xl';
+
 export interface Story {
   id: string;
   kind: StoryKind;
@@ -39,10 +41,27 @@ export interface Story {
   imageDirection: string | null;
   hasFactCheckIssues: boolean;
   factCheckIssues: string | null;
+  sizeAssessment: SizeAssessment;
+  sizeReasoning: string;
+  additions: number;
+  deletions: number;
+  filesChanged: number;
   commitUrl?: string;
   prNumber?: number;
   prUrl?: string;
   mergedAt?: string;
+}
+
+const SIZE_DISPLAY: Record<SizeAssessment, string> = {
+  xs: 'XS',
+  small: 'S',
+  medium: 'M',
+  large: 'L',
+  xl: 'XL',
+};
+
+export function sizeLabel(s: SizeAssessment): string {
+  return SIZE_DISPLAY[s];
 }
 
 const CATEGORY_DISPLAY: Record<CategoryKey, string> = {

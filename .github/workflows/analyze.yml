@@ -23,6 +23,13 @@ on:
         description: "Sampling temperature for the LLM."
         type: number
         default: 0
+      size-thresholds:
+        description: |
+          Optional JSON overriding the size buckets used for the rule-based size pill.
+          Default: {"xs":{"maxLines":10,"maxFiles":1},"small":{"maxLines":100,"maxFiles":5},"medium":{"maxLines":500,"maxFiles":15},"large":{"maxLines":1000,"maxFiles":30}}
+          Anything above large.maxLines is xl. Provide a partial object to override a subset.
+        type: string
+        default: ""
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -57,12 +64,14 @@ jobs:
         run: yarn workspace @gitpulse/action analyze
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AI_MODEL: ${{ inputs.ai-model }}
           AI_PROTOCOL: ${{ inputs.ai-protocol }}
           AI_BASE_URL: ${{ inputs.ai-base-url }}
           AI_TEMPERATURE: ${{ inputs.ai-temperature }}
           GITPULSE_BOOTSTRAP_DAYS: ${{ inputs.bootstrap-days }}
+          GITPULSE_SIZE_THRESHOLDS: ${{ inputs.size-thresholds }}
 
       - name: Build site
         run: yarn workspace @gitpulse/site build

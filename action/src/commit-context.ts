@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import type { CommitRecord, FileChange } from './types.ts';
+import type { PRData, LinkedIssue } from './github.ts';
 
 const MAX_PATCH_BYTES_PER_FILE = 10_000;
 const MAX_TOTAL_PATCH_BYTES = 50_000;
@@ -54,8 +55,7 @@ function run(cmd: string, cwd: string): string {
   return execSync(cmd, { cwd, encoding: 'utf8', maxBuffer: 1024 * 1024 * 16 });
 }
 
-// Format a single commit as a gitsky-style "PR context" prompt block, so the
-// existing system+user prompt structure works without PR data.
+// Format a single commit (no associated PR) as a gitsky-style PR context block.
 export function formatCommitAsPRContext(commit: CommitRecord): string {
   const filesText =
     commit.files.length > 0
@@ -69,6 +69,7 @@ export function formatCommitAsPRContext(commit: CommitRecord): string {
 - Author: ${commit.authorName}
 - Date: ${commit.committedAt}
 - SHA: ${commit.shortSha}
+- This commit was pushed directly to the default branch (no associated pull request).
 - Description:
 ${description}
 
@@ -77,6 +78,39 @@ ${description}
 
 ## File Changes (${commit.files.length} files, +${commit.insertions}/-${commit.deletions})
 ${filesText}`;
+}
+
+// Format a merged PR (with the local commit's diffs) as a gitsky-style context block.
+export function formatPRContext(commit: CommitRecord, pr: PRData): string {
+  const filesText =
+    commit.files.length > 0
+      ? commit.files.map(formatFileEntry).join('\n\n')
+      : '(no files found)';
+
+  const linkedIssuesText =
+    pr.linkedIssues.length > 0
+      ? `\n\n## Linked Issues\n${pr.linkedIssues.map(formatLinkedIssue).join('\n\n')}`
+      : '';
+
+  return `## PR Metadata
+- Title: ${pr.title}
+- Author: ${pr.authorLogin ?? commit.authorName}
+- PR Number: #${pr.number}
+- Merged At: ${pr.mergedAt ?? '(not merged)'}
+- Description:
+${pr.body || 'No description provided'}
+${linkedIssuesText}
+
+## Commits (1 represented; squash-merge or single landing commit)
+1. ${commit.subject} (${commit.authorName})
+
+## File Changes (${pr.changedFiles} files reported by GitHub, ${commit.files.length} in local diff, +${pr.additions}/-${pr.deletions})
+${filesText}`;
+}
+
+function formatLinkedIssue(issue: LinkedIssue): string {
+  return `### Issue #${issue.number}: ${issue.title}
+${issue.body || '(no description)'}`;
 }
 
 function formatFileEntry(f: FileChange): string {

@@ -1,4 +1,5 @@
 import type { ChangesNodeOutput, CategoryEntry } from './schemas.ts';
+import type { SizeAssessment } from './size.ts';
 
 export interface CommitRecord {
   sha: string;
@@ -41,6 +42,12 @@ export interface Story {
   imageDirection: string | null;
   hasFactCheckIssues: boolean;
   factCheckIssues: string | null;
+  // Size assessment (rule-based)
+  sizeAssessment: SizeAssessment;
+  sizeReasoning: string;
+  additions: number;
+  deletions: number;
+  filesChanged: number;
   // Source metadata
   commitUrl?: string;
   prNumber?: number;

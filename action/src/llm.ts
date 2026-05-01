@@ -4,8 +4,7 @@ import { z } from 'zod';
 import { ChangesNodeOutputSchema, type ChangesNodeOutput } from './schemas.ts';
 import { stripJsonSchemaConstraints } from './strip-schema.ts';
 import { PR_CATEGORY_KEYS } from './categories.ts';
-import { formatCommitAsPRContext } from './commit-context.ts';
-import type { CommitRecord, AISummary } from './types.ts';
+import type { AISummary } from './types.ts';
 
 // ============================================================
 // SYSTEM PROMPT — lifted verbatim from gitsky/src/services/pr-analysis/nodes/changes.ts
@@ -302,8 +301,8 @@ export function createSummarizer(config: LLMConfig) {
     ...(isMiniMax && { method: 'functionCalling' }),
   });
 
-  return async function summarize(commit: CommitRecord): Promise<AISummary> {
-    const userPrompt = buildUserPrompt(formatCommitAsPRContext(commit));
+  return async function summarize(changesContext: string): Promise<AISummary> {
+    const userPrompt = buildUserPrompt(changesContext);
     const response = await structured.invoke([
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
