@@ -1,8 +1,14 @@
 name: Self-deploy
 
+# Runs the gitpulse analyzer on this repo (znat/gitpulse) — dogfooding
+# the same reusable workflow that consumers will install on their own repos.
+
 on:
   push:
     branches: [main]
+  schedule:
+    # Daily at 09:00 UTC.
+    - cron: "0 9 * * *"
   workflow_dispatch:
 
 jobs:
