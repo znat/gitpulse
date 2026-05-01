@@ -6,12 +6,19 @@ const FIELD_SEP = '\x1f';
 const FORMAT = ['%H', '%aI', '%an', '%ae', '%s', '%b'].join(FIELD_SEP);
 
 export function defaultBranch(repoDir: string): string {
-  return execSync('git symbolic-ref --short refs/remotes/origin/HEAD', {
-    cwd: repoDir,
-    encoding: 'utf8',
-  })
-    .trim()
-    .replace(/^origin\//, '');
+  // Try origin/HEAD first (most accurate), fall back to current HEAD
+  // (works after a fresh actions/checkout where origin/HEAD isn't set).
+  try {
+    return execSync('git symbolic-ref --short refs/remotes/origin/HEAD', {
+      cwd: repoDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .trim()
+      .replace(/^origin\//, '');
+  } catch {
+    return 'HEAD';
+  }
 }
 
 export function walkCommits(opts: {
