@@ -124,11 +124,17 @@ const cormorantGaramond = Cormorant_Garamond({
   display: 'swap',
 });
 
+// Match next.config.js basePath logic so the favicon resolves under
+// /<repo>/ on GitHub Pages.
+const REPO_BASE_PATH = process.env.GITHUB_REPOSITORY?.split('/')[1]
+  ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}`
+  : '';
+
 export const metadata: Metadata = {
   title: 'gitpulse',
   description: "Editorial story feed for your repo's PRs and direct pushes.",
   icons: {
-    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+    icon: [{ url: `${REPO_BASE_PATH}/favicon.svg`, type: 'image/svg+xml' }],
   },
 };
 
