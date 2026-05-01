@@ -18,8 +18,13 @@ import {
 } from 'next/font/google';
 import { TopBar } from '@/components/TopBar';
 import { Footer } from '@/components/Footer';
+import { ThemeProvider } from '@/providers/ThemeProvider';
 import { loadRepo, publicationName } from '@/lib/repo';
 import './globals.css';
+
+// Inlined into <head> so the theme is applied before React hydrates,
+// avoiding a flash of light theme on dark-system users.
+const THEME_INIT_SCRIPT = `(function(){try{var k='gitpulse-preferences';var s=localStorage.getItem(k);var p=s?JSON.parse(s):null;var t=p&&p.theme?p.theme:'system';var r=t==='system'?(window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):t;document.documentElement.setAttribute('data-theme',r);document.documentElement.setAttribute('data-font','nyt');}catch(e){document.documentElement.setAttribute('data-theme','light');document.documentElement.setAttribute('data-font','nyt');}})();`;
 
 const playfairDisplay = Playfair_Display({
   subsets: ['latin'],
@@ -149,11 +154,16 @@ export default function RootLayout({
 
   const repo = loadRepo();
   return (
-    <html lang="en" data-theme="light" data-font="nyt">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className={fontVariables}>
-        <TopBar publicationName={publicationName(repo)} />
-        {children}
-        <Footer />
+        <ThemeProvider>
+          <TopBar publicationName={publicationName(repo)} />
+          {children}
+          <Footer />
+        </ThemeProvider>
       </body>
     </html>
   );

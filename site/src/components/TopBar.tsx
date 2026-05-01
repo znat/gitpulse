@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface TopBarProps {
   publicationName?: string;
@@ -24,6 +25,7 @@ export function TopBar({ publicationName, scrollThreshold = 150 }: TopBarProps) 
     <header className="sticky top-0 z-50 bg-background">
       <div className="max-w-[1200px] mx-auto px-6 flex justify-between items-stretch h-12">
         <LeftSection publicationName={publicationName} isScrolled={isScrolled} />
+        <RightSection />
       </div>
 
       <div
@@ -31,7 +33,6 @@ export function TopBar({ publicationName, scrollThreshold = 150 }: TopBarProps) 
           isScrolled ? 'opacity-100' : 'opacity-0'
         }`}
       />
-
       <div
         className={`absolute left-0 right-0 top-full h-4 pointer-events-none bg-gradient-to-b from-background to-transparent transition-opacity duration-300 ${
           isScrolled ? 'opacity-100' : 'opacity-0'
@@ -49,7 +50,6 @@ function LeftSection({
   isScrolled: boolean;
 }) {
   const showPublicationName = isScrolled && !!publicationName;
-
   return (
     <div className="flex items-center gap-3 min-w-0">
       <Logo isScrolled={showPublicationName} />
@@ -60,17 +60,44 @@ function LeftSection({
   );
 }
 
+function RightSection() {
+  return (
+    <div className="flex items-center gap-3">
+      <ThemeToggle />
+    </div>
+  );
+}
+
+function PulseMark({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 28 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M1 6 H7 L9 2 L13 10 L15 6 H21 L23 3 L25 9 L27 6" />
+    </svg>
+  );
+}
+
 function Logo({ isScrolled }: { isScrolled: boolean }) {
   return (
     <Link
       href="/"
-      className={`font-display text-lg tracking-tight text-muted no-underline hover:text-foreground transition-all duration-300 self-center ${
+      className={`flex items-center gap-2 self-center font-feed-display text-lg tracking-tight text-feed-gold no-underline hover:text-foreground transition-all duration-300 ${
         isScrolled
           ? 'opacity-0 absolute -translate-y-2 pointer-events-none'
           : 'opacity-100'
       }`}
+      aria-label="gitpulse"
     >
-      gitpulse
+      <PulseMark className="w-7 h-3" />
+      <span className="font-semibold text-foreground">Gitpulse</span>
     </Link>
   );
 }
@@ -78,7 +105,7 @@ function Logo({ isScrolled }: { isScrolled: boolean }) {
 function PublicationTitle({ name, isVisible }: { name: string; isVisible: boolean }) {
   return (
     <div
-      className={`flex items-baseline gap-3 transition-all duration-300 self-center ${
+      className={`flex items-baseline gap-3 self-center transition-all duration-300 ${
         isVisible
           ? 'opacity-100 translate-y-0'
           : 'opacity-0 translate-y-2 pointer-events-none absolute'
@@ -86,7 +113,7 @@ function PublicationTitle({ name, isVisible }: { name: string; isVisible: boolea
     >
       <Link
         href="/"
-        className="font-display text-lg text-foreground no-underline hover:text-accent transition-colors truncate"
+        className="font-feed-display text-lg text-foreground no-underline hover:text-accent transition-colors truncate"
       >
         {name}
       </Link>
