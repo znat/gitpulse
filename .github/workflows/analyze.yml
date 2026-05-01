@@ -7,12 +7,12 @@ on:
         description: "On first run, how far back to look for PRs/commits."
         type: number
         default: 30
-      anthropic-model:
-        description: "Anthropic model id used for story generation."
+      openai-model:
+        description: "OpenAI model id used for story generation (via LangChain)."
         type: string
-        default: claude-sonnet-4-6
+        default: gpt-4o-mini
     secrets:
-      ANTHROPIC_API_KEY:
+      OPENAI_API_KEY:
         required: false # Phase 0 has no AI calls; required from Phase 2 onward.
 
 permissions:
