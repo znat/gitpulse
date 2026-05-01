@@ -7,13 +7,22 @@ on:
         description: "On first run, how far back to look for PRs/commits."
         type: number
         default: 30
-      openai-model:
-        description: "OpenAI model id used for story generation (via LangChain)."
+      ai-model:
+        description: "Model id used for story generation. Must be supported by the chosen ai-base-url provider."
         type: string
         default: gpt-4o-mini
+      ai-base-url:
+        description: "Base URL for the chat-completions endpoint. Leave empty for OpenAI. For OpenAI-compatible providers (MiniMax, Groq, OpenRouter, Together, etc.) set this to their API base, e.g. https://api.minimax.io/v1."
+        type: string
+        default: ""
+      ai-temperature:
+        description: "Sampling temperature for the LLM."
+        type: number
+        default: 0.7
     secrets:
       OPENAI_API_KEY:
         required: false # Phase 0 has no AI calls; required from Phase 2 onward.
+                        # Holds the API key for whichever OpenAI-compatible provider is configured via ai-base-url.
 
 permissions:
   contents: read

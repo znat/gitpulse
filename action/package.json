@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "analyze": "tsx src/index.ts",
     "lint": "echo 'no lint yet'",
     "typecheck": "tsc --noEmit"
   },
