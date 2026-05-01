@@ -1,0 +1,11 @@
+name: Self-deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  run:
+    uses: ./.github/workflows/analyze.yml
+    secrets: inherit

@@ -1,0 +1,21 @@
+{
+  "name": "gitpulse",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Editorial story feed for your repo's PRs and direct pushes.",
+  "license": "AGPL-3.0-or-later",
+  "workspaces": [
+    "action",
+    "site"
+  ],
+  "scripts": {
+    "dev": "yarn workspace @gitpulse/site dev",
+    "build": "yarn workspace @gitpulse/site build",
+    "lint": "yarn workspaces run lint",
+    "typecheck": "yarn workspaces run typecheck"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "yarn@1.22.22"
+}
