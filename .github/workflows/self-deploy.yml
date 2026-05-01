@@ -7,11 +7,16 @@ on:
   push:
     branches: [main]
   schedule:
-    # Daily at 09:00 UTC.
     - cron: "0 9 * * *"
   workflow_dispatch:
 
 jobs:
   run:
     uses: ./.github/workflows/analyze.yml
-    secrets: inherit
+    with:
+      ai-model: MiniMax-M2.7
+      ai-base-url: https://api.minimax.io/v1
+      ai-temperature: 0.7
+      bootstrap-days: 30
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}

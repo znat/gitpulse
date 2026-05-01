@@ -35,8 +35,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout (full history — analyzer needs git log)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,6 +48,16 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
+
+      - name: Run analyzer
+        run: yarn workspace @gitpulse/action analyze
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_MODEL: ${{ inputs.ai-model }}
+          AI_BASE_URL: ${{ inputs.ai-base-url }}
+          AI_TEMPERATURE: ${{ inputs.ai-temperature }}
+          GITPULSE_BOOTSTRAP_DAYS: ${{ inputs.bootstrap-days }}
 
       - name: Build site
         run: yarn workspace @gitpulse/site build
