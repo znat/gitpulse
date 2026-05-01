@@ -1,5 +1,12 @@
 import { graphql } from '@octokit/graphql';
 
+export interface RepoInfo {
+  owner: string;
+  repo: string;
+  description: string;
+  url: string;
+}
+
 export interface PRData {
   number: number;
   title: string;
@@ -81,6 +88,19 @@ const COMMIT_WITH_PRS_QUERY = `
   }
 `;
 
+const REPO_QUERY = `
+  query Repo($owner: String!, $repo: String!) {
+    repository(owner: $owner, name: $repo) {
+      description
+      url
+    }
+  }
+`;
+
+interface RepoQueryResponse {
+  repository: { description: string | null; url: string };
+}
+
 export class GitHubClient {
   private gql: typeof graphql;
 
@@ -88,6 +108,23 @@ export class GitHubClient {
     this.gql = graphql.defaults({
       headers: { authorization: `token ${token}` },
     });
+  }
+
+  async fetchRepo(owner: string, repo: string): Promise<RepoInfo> {
+    try {
+      const r = await this.gql<RepoQueryResponse>(REPO_QUERY, { owner, repo });
+      return {
+        owner,
+        repo,
+        description: r.repository.description ?? '',
+        url: r.repository.url,
+      };
+    } catch (err) {
+      console.warn(
+        `[gitpulse] repo fetch failed: ${err instanceof Error ? err.message : err}`,
+      );
+      return { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` };
+    }
   }
 
   async fetchPRForCommit(

@@ -3,7 +3,9 @@ import { defaultBranch, walkCommits } from './git.ts';
 import { fetchFileChanges, formatCommitAsPRContext, formatPRContext } from './commit-context.ts';
 import { createSummarizer, postProcessOutput } from './llm.ts';
 import { buildStoryFromCommit, writeStory } from './render.ts';
-import { GitHubClient, parseRepoFullName } from './github.ts';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { GitHubClient, parseRepoFullName, type RepoInfo } from './github.ts';
 import { assessPRSize } from './size.ts';
 import { pMap } from './pmap.ts';
 import type { CommitRecord } from './types.ts';
@@ -35,6 +37,12 @@ async function main() {
   const summarize = createSummarizer(cfg.ai);
   const gh = cfg.githubToken ? new GitHubClient(cfg.githubToken) : null;
   const { owner, repo } = parseRepoFullName(cfg.repoFullName);
+
+  // Fetch + persist repo metadata for the site's RepoHeader.
+  const repoInfo: RepoInfo = gh
+    ? await gh.fetchRepo(owner, repo)
+    : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` };
+  writeRepoJson(cfg.outDir, repoInfo);
 
   let processed = 0;
   let failed = 0;
@@ -111,6 +119,16 @@ async function processCommit(opts: {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
+}
+
+function writeRepoJson(outDir: string, info: RepoInfo): void {
+  // outDir = .../site/src/content/stories — write repo.json one level up at
+  // .../site/src/content/repo.json
+  const contentDir = dirname(outDir);
+  const path = `${contentDir}/repo.json`;
+  mkdirSync(contentDir, { recursive: true });
+  writeFileSync(path, JSON.stringify(info, null, 2) + '\n');
+  console.log(`[gitpulse] wrote ${path}`);
 }
 
 function computeStatTotals(files: { additions: number; deletions: number }[]): {

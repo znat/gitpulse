@@ -16,6 +16,7 @@ import {
   Cormorant_Garamond,
   Vollkorn,
 } from 'next/font/google';
+import { TopBar } from '@/components/TopBar';
 import './globals.css';
 
 const playfairDisplay = Playfair_Display({
@@ -146,7 +147,10 @@ export default function RootLayout({
 
   return (
     <html lang="en" data-theme="light" data-font="nyt">
-      <body className={fontVariables}>{children}</body>
+      <body className={fontVariables}>
+        <TopBar />
+        {children}
+      </body>
     </html>
   );
 }
