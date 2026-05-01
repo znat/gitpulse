@@ -1,11 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import {
-  loadStories,
-  loadStory,
-  primaryCategory,
-  categoryDisplayName,
-} from '@/lib/stories';
+import { primaryCategory, categoryDisplayName } from '@/lib/stories';
+import { loadStories, loadStory } from '@/lib/stories-loader';
 import { SizeBars } from '@/components/SizeBars';
 
 export function generateStaticParams() {

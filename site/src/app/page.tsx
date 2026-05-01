@@ -1,4 +1,5 @@
-import { groupByDay, loadStories } from '@/lib/stories';
+import { groupByDay } from '@/lib/stories';
+import { loadStories } from '@/lib/stories-loader';
 import { loadRepo, publicationName, publicationSubtitle } from '@/lib/repo';
 import { FeedHeader } from '@/components/FeedHeader';
 import { SectionNav } from '@/components/SectionNav';

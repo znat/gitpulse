@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+// Pure types + helpers. Safe to import from client components.
+// Filesystem-based loaders live in stories-loader.ts (server-only).
 
 export type StoryKind = 'pr' | 'direct-push';
 
@@ -86,24 +86,6 @@ const SIZE_LABEL: Record<SizeAssessment, string> = {
 
 export function sizeLabel(s: SizeAssessment): string {
   return SIZE_LABEL[s];
-}
-
-const CONTENT_DIR = join(process.cwd(), 'src/content/stories');
-
-export function loadStories(): Story[] {
-  let files: string[] = [];
-  try {
-    files = readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.json'));
-  } catch {
-    return [];
-  }
-  return files
-    .map((f) => JSON.parse(readFileSync(join(CONTENT_DIR, f), 'utf8')) as Story)
-    .sort((a, b) => b.committedAt.localeCompare(a.committedAt));
-}
-
-export function loadStory(id: string): Story | null {
-  return loadStories().find((s) => s.id === id) ?? null;
 }
 
 export interface StoryDay {
