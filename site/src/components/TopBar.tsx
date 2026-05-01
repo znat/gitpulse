@@ -68,36 +68,17 @@ function RightSection() {
   );
 }
 
-function PulseMark({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 28 12"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M1 6 H7 L9 2 L13 10 L15 6 H21 L23 3 L25 9 L27 6" />
-    </svg>
-  );
-}
-
 function Logo({ isScrolled }: { isScrolled: boolean }) {
   return (
     <Link
       href="/"
-      className={`flex items-center gap-2 self-center font-feed-display text-lg tracking-tight text-feed-gold no-underline hover:text-foreground transition-all duration-300 ${
+      className={`self-center font-display font-bold text-lg tracking-tight text-muted no-underline hover:text-foreground hover:no-underline transition-all duration-300 ${
         isScrolled
           ? 'opacity-0 absolute -translate-y-2 pointer-events-none'
           : 'opacity-100'
       }`}
-      aria-label="gitpulse"
     >
-      <PulseMark className="w-7 h-3" />
-      <span className="font-semibold text-foreground">Gitpulse</span>
+      Gitpulse
     </Link>
   );
 }
@@ -113,7 +94,7 @@ function PublicationTitle({ name, isVisible }: { name: string; isVisible: boolea
     >
       <Link
         href="/"
-        className="font-feed-display text-lg text-foreground no-underline hover:text-accent transition-colors truncate"
+        className="font-display font-bold text-lg text-foreground no-underline hover:text-accent hover:no-underline transition-colors truncate"
       >
         {name}
       </Link>

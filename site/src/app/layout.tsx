@@ -127,6 +127,9 @@ const cormorantGaramond = Cormorant_Garamond({
 export const metadata: Metadata = {
   title: 'gitpulse',
   description: "Editorial story feed for your repo's PRs and direct pushes.",
+  icons: {
+    icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }],
+  },
 };
 
 export default function RootLayout({
