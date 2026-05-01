@@ -14,9 +14,10 @@ jobs:
   run:
     uses: ./.github/workflows/analyze.yml
     with:
-      ai-model: MiniMax-M2.7
+      ai-protocol: openai
       ai-base-url: https://api.minimax.io/v1
-      ai-temperature: 0.7
+      ai-model: MiniMax-M2.7
+      ai-temperature: 0
       bootstrap-days: 30
     secrets:
       OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}

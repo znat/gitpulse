@@ -8,6 +8,7 @@ export interface RuntimeConfig {
   ai: {
     apiKey: string;
     model: string;
+    protocol: 'openai' | 'anthropic';
     baseURL?: string;
     temperature: number;
   };
@@ -31,8 +32,9 @@ export function loadConfig(env = process.env): RuntimeConfig {
     ai: {
       apiKey,
       model: env.AI_MODEL ?? 'gpt-4o-mini',
+      protocol: (env.AI_PROTOCOL as 'openai' | 'anthropic') ?? 'openai',
       baseURL: env.AI_BASE_URL || undefined,
-      temperature: Number(env.AI_TEMPERATURE ?? 0.7),
+      temperature: Number(env.AI_TEMPERATURE ?? 0),
     },
   };
 }

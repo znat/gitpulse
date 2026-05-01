@@ -58,6 +58,7 @@ function parseRecord(rec: string): CommitRecord {
     filesChanged: 0,
     insertions: 0,
     deletions: 0,
+    files: [],
   };
 }
 

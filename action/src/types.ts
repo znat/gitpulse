@@ -1,3 +1,5 @@
+import type { ChangesNodeOutput, CategoryEntry } from './schemas.ts';
+
 export interface CommitRecord {
   sha: string;
   shortSha: string;
@@ -9,12 +11,15 @@ export interface CommitRecord {
   filesChanged: number;
   insertions: number;
   deletions: number;
+  files: FileChange[];
 }
 
-export interface AISummary {
-  headline: string;
-  standfirst: string;
-  body: string;
+export interface FileChange {
+  path: string;
+  status: string; // M, A, D, R, etc.
+  additions: number;
+  deletions: number;
+  patch: string;
 }
 
 export type StoryKind = 'pr' | 'direct-push';
@@ -26,11 +31,21 @@ export interface Story {
   author: string;
   authorUrl?: string;
   committedAt: string;
+  // gitsky-style ChangesNodeOutput fields, lifted into the story:
+  categories: CategoryEntry[];
   headline: string;
   standfirst: string;
-  body: string;
+  story: string; // Markdown body — the user-facing narrative
+  digestSentence: string;
+  technicalDescription: string;
+  imageDirection: string | null;
+  hasFactCheckIssues: boolean;
+  factCheckIssues: string | null;
+  // Source metadata
   commitUrl?: string;
   prNumber?: number;
   prUrl?: string;
   mergedAt?: string;
 }
+
+export type AISummary = ChangesNodeOutput;

@@ -15,10 +15,14 @@ on:
         description: "Base URL for the chat-completions endpoint. Leave empty for OpenAI. For OpenAI-compatible providers (MiniMax, Groq, OpenRouter, Together, etc.) set this to their API base, e.g. https://api.minimax.io/v1."
         type: string
         default: ""
+      ai-protocol:
+        description: "API protocol the model speaks. 'openai' for OpenAI/Groq/OpenRouter/etc. 'anthropic' for Claude or for MiniMax via its Anthropic-compatible endpoint."
+        type: string
+        default: openai
       ai-temperature:
         description: "Sampling temperature for the LLM."
         type: number
-        default: 0.7
+        default: 0
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -55,6 +59,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AI_MODEL: ${{ inputs.ai-model }}
+          AI_PROTOCOL: ${{ inputs.ai-protocol }}
           AI_BASE_URL: ${{ inputs.ai-base-url }}
           AI_TEMPERATURE: ${{ inputs.ai-temperature }}
           GITPULSE_BOOTSTRAP_DAYS: ${{ inputs.bootstrap-days }}

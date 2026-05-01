@@ -1,6 +1,7 @@
 import { loadConfig } from './config.ts';
 import { defaultBranch, walkCommits } from './git.ts';
-import { createSummarizer } from './llm.ts';
+import { fetchFileChanges } from './commit-context.ts';
+import { createSummarizer, postProcessOutput } from './llm.ts';
 import { buildStoryFromCommit, writeStory } from './render.ts';
 
 async function main() {
@@ -9,7 +10,9 @@ async function main() {
   const since = isoDaysAgo(cfg.bootstrapDays);
 
   console.log(`[gitpulse] repo=${cfg.repoFullName} branch=${branch} since=${since}`);
-  console.log(`[gitpulse] ai.model=${cfg.ai.model} ai.baseURL=${cfg.ai.baseURL ?? '(default)'}`);
+  console.log(
+    `[gitpulse] ai.protocol=${cfg.ai.protocol} ai.model=${cfg.ai.model} ai.baseURL=${cfg.ai.baseURL ?? '(default)'}`,
+  );
 
   const commits = walkCommits({
     repoDir: cfg.repoDir,
@@ -18,7 +21,6 @@ async function main() {
     limit: cfg.limit,
   });
   console.log(`[gitpulse] commits to process: ${commits.length}`);
-
   if (commits.length === 0) {
     console.log('[gitpulse] nothing to do');
     return;
@@ -27,23 +29,15 @@ async function main() {
   const summarize = createSummarizer(cfg.ai);
 
   let processed = 0;
-  for (const commit of commits) {
+  for (const baseCommit of commits) {
+    const commit = { ...baseCommit, files: fetchFileChanges(cfg.repoDir, baseCommit.sha) };
     process.stdout.write(`  ${commit.shortSha} ${truncate(commit.subject, 60)} … `);
     try {
-      const ai = await summarize(commit);
-      const story = buildStoryFromCommit({
-        repoFullName: cfg.repoFullName,
-        sha: commit.sha,
-        shortSha: commit.shortSha,
-        authorName: commit.authorName,
-        committedAt: commit.committedAt,
-        headline: ai.headline,
-        standfirst: ai.standfirst,
-        body: ai.body,
-      });
+      const ai = postProcessOutput(await summarize(commit));
+      const story = buildStoryFromCommit({ repoFullName: cfg.repoFullName, commit, ai });
       writeStory(cfg.outDir, story);
       processed++;
-      console.log(`✓`);
+      console.log(`✓ [${ai.categories[0]?.key ?? '?'}]`);
     } catch (err) {
       console.log(`✗ ${err instanceof Error ? err.message : String(err)}`);
     }

@@ -3,31 +3,71 @@ import { join } from 'node:path';
 
 export type StoryKind = 'pr' | 'direct-push';
 
-export interface StoryBase {
+export type CategoryKey =
+  | 'feature'
+  | 'bugfix'
+  | 'refactor'
+  | 'maintenance'
+  | 'docs'
+  | 'test'
+  | 'dependency'
+  | 'config'
+  | 'performance'
+  | 'security'
+  | 'ci'
+  | 'style';
+
+export interface CategoryEntry {
+  key: CategoryKey;
+  score: number;
+  reason: string;
+}
+
+export interface Story {
   id: string;
   kind: StoryKind;
   sha: string;
   author: string;
   authorUrl?: string;
   committedAt: string;
+  categories: CategoryEntry[];
   headline: string;
   standfirst: string;
-  body: string;
+  story: string;
+  digestSentence: string;
+  technicalDescription: string;
+  imageDirection: string | null;
+  hasFactCheckIssues: boolean;
+  factCheckIssues: string | null;
+  commitUrl?: string;
+  prNumber?: number;
+  prUrl?: string;
+  mergedAt?: string;
 }
 
-export interface PRStory extends StoryBase {
-  kind: 'pr';
-  prNumber: number;
-  prUrl: string;
-  mergedAt: string;
+const CATEGORY_DISPLAY: Record<CategoryKey, string> = {
+  feature: 'New Feature',
+  bugfix: 'Bug Fix',
+  refactor: 'Refactoring',
+  maintenance: 'Maintenance',
+  docs: 'Documentation',
+  test: 'Tests',
+  dependency: 'Dependencies',
+  config: 'Configuration',
+  performance: 'Performance',
+  security: 'Security',
+  ci: 'CI/CD',
+  style: 'Code Style',
+};
+
+export function categoryDisplayName(key: CategoryKey): string {
+  return CATEGORY_DISPLAY[key] ?? key;
 }
 
-export interface DirectPushStory extends StoryBase {
-  kind: 'direct-push';
-  commitUrl: string;
+export function primaryCategory(story: Story): CategoryEntry | null {
+  const sorted = [...story.categories].sort((a, b) => b.score - a.score);
+  return sorted[0] ?? null;
 }
-
-export type Story = PRStory | DirectPushStory;
 
 const CONTENT_DIR = join(process.cwd(), 'src/content/stories');
 
@@ -38,13 +78,11 @@ export function loadStories(): Story[] {
   } catch {
     return [];
   }
-  const stories = files
+  return files
     .map((f) => JSON.parse(readFileSync(join(CONTENT_DIR, f), 'utf8')) as Story)
     .sort((a, b) => b.committedAt.localeCompare(a.committedAt));
-  return stories;
 }
 
 export function loadStory(id: string): Story | null {
-  const all = loadStories();
-  return all.find((s) => s.id === id) ?? null;
+  return loadStories().find((s) => s.id === id) ?? null;
 }
