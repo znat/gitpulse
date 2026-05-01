@@ -16,20 +16,15 @@ on:
         required: false # Phase 0 has no AI calls; required from Phase 2 onward.
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: gitpulse-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,14 +43,36 @@ jobs:
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: gitpulse-site
           path: site/out
+          retention-days: 7
 
-      - name: Deploy to Pages
-        id: deploy
-        uses: actions/deploy-pages@v4
+  # Pages deployment is gated until the repo is public (Pages is not
+  # available on private repos for free / Pro / Team plans). Once the
+  # repo flips public, uncomment the deploy job below and remove the
+  # generic upload-artifact step above.
+  #
+  # deploy-pages:
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     pages: write
+  #     id-token: write
+  #   environment:
+  #     name: github-pages
+  #     url: ${{ steps.deploy.outputs.page_url }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with: { node-version: 22, cache: yarn }
+  #     - run: yarn install --frozen-lockfile
+  #     - run: yarn workspace @gitpulse/site build
+  #       env: { GITHUB_REPOSITORY: ${{ github.repository }} }
+  #     - uses: actions/configure-pages@v5
+  #     - uses: actions/upload-pages-artifact@v3
+  #       with: { path: site/out }
+  #     - id: deploy
+  #       uses: actions/deploy-pages@v4
