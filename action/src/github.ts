@@ -28,9 +28,22 @@ export interface LinkedIssue {
   url: string;
 }
 
-interface CommitWithPRsResponse {
+export interface CommitAuthor {
+  login: string;
+  url: string;
+}
+
+export interface CommitContext {
+  pr: PRData | null;
+  commitAuthor: CommitAuthor | null;
+}
+
+interface CommitContextResponse {
   repository: {
     object: {
+      author?: {
+        user?: { login: string; url: string } | null;
+      } | null;
       associatedPullRequests: {
         nodes: Array<{
           number: number;
@@ -56,11 +69,14 @@ interface CommitWithPRsResponse {
   };
 }
 
-const COMMIT_WITH_PRS_QUERY = `
-  query CommitWithPRs($owner: String!, $repo: String!, $oid: GitObjectID!) {
+const COMMIT_CONTEXT_QUERY = `
+  query CommitContext($owner: String!, $repo: String!, $oid: GitObjectID!) {
     repository(owner: $owner, name: $repo) {
       object(oid: $oid) {
         ... on Commit {
+          author {
+            user { login url }
+          }
           associatedPullRequests(first: 1, orderBy: { field: CREATED_AT, direction: DESC }) {
             nodes {
               number
@@ -127,14 +143,14 @@ export class GitHubClient {
     }
   }
 
-  async fetchPRForCommit(
+  async fetchCommitContext(
     owner: string,
     repo: string,
     sha: string,
-  ): Promise<PRData | null> {
-    let response: CommitWithPRsResponse;
+  ): Promise<CommitContext> {
+    let response: CommitContextResponse;
     try {
-      response = await this.gql<CommitWithPRsResponse>(COMMIT_WITH_PRS_QUERY, {
+      response = await this.gql<CommitContextResponse>(COMMIT_CONTEXT_QUERY, {
         owner,
         repo,
         oid: sha,
@@ -143,29 +159,38 @@ export class GitHubClient {
       console.warn(
         `[gitpulse] GraphQL fetch failed for ${sha.slice(0, 7)}: ${err instanceof Error ? err.message : err}`,
       );
-      return null;
+      return { pr: null, commitAuthor: null };
     }
-    const pr = response.repository.object?.associatedPullRequests.nodes[0];
-    if (!pr) return null;
 
-    return {
-      number: pr.number,
-      title: pr.title,
-      body: pr.body ?? '',
-      url: pr.url,
-      mergedAt: pr.mergedAt,
-      authorLogin: pr.author?.login ?? null,
-      authorUrl: pr.author?.url ?? null,
-      additions: pr.additions,
-      deletions: pr.deletions,
-      changedFiles: pr.changedFiles,
-      linkedIssues: pr.closingIssuesReferences.nodes.map((i) => ({
-        number: i.number,
-        title: i.title,
-        body: i.body ?? '',
-        url: i.url,
-      })),
-    };
+    const obj = response.repository.object;
+    const userNode = obj?.author?.user ?? null;
+    const commitAuthor: CommitAuthor | null = userNode
+      ? { login: userNode.login, url: userNode.url }
+      : null;
+
+    const prNode = obj?.associatedPullRequests.nodes[0];
+    const pr: PRData | null = prNode
+      ? {
+          number: prNode.number,
+          title: prNode.title,
+          body: prNode.body ?? '',
+          url: prNode.url,
+          mergedAt: prNode.mergedAt,
+          authorLogin: prNode.author?.login ?? null,
+          authorUrl: prNode.author?.url ?? null,
+          additions: prNode.additions,
+          deletions: prNode.deletions,
+          changedFiles: prNode.changedFiles,
+          linkedIssues: prNode.closingIssuesReferences.nodes.map((i) => ({
+            number: i.number,
+            title: i.title,
+            body: i.body ?? '',
+            url: i.url,
+          })),
+        }
+      : null;
+
+    return { pr, commitAuthor };
   }
 }
 

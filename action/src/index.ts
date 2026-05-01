@@ -135,14 +135,18 @@ async function processCommit(opts: {
     const stat = computeStatTotals(files);
     const commit: CommitRecord = { ...baseCommit, files, ...stat };
 
-    const pr = gh ? await gh.fetchPRForCommit(owner, repo, commit.sha) : null;
-    const context = pr ? formatPRContext(commit, pr) : formatCommitAsPRContext(commit);
-    const ai = postProcessOutput(await summarize(context));
+    const ctx = gh
+      ? await gh.fetchCommitContext(owner, repo, commit.sha)
+      : { pr: null, commitAuthor: null };
+    const promptContext = ctx.pr
+      ? formatPRContext(commit, ctx.pr)
+      : formatCommitAsPRContext(commit);
+    const ai = postProcessOutput(await summarize(promptContext));
 
     const size = assessPRSize({
-      additions: pr?.additions ?? commit.insertions,
-      deletions: pr?.deletions ?? commit.deletions,
-      filesChanged: pr?.changedFiles ?? commit.filesChanged,
+      additions: ctx.pr?.additions ?? commit.insertions,
+      deletions: ctx.pr?.deletions ?? commit.deletions,
+      filesChanged: ctx.pr?.changedFiles ?? commit.filesChanged,
     });
 
     const story = buildStoryFromCommit({
@@ -150,11 +154,11 @@ async function processCommit(opts: {
       commit,
       ai,
       size,
-      pr,
+      context: ctx,
     });
     writeStory(cfg.storiesDir, story);
 
-    const tag = pr ? `pr#${pr.number}` : 'commit';
+    const tag = ctx.pr ? `pr#${ctx.pr.number}` : 'commit';
     const cat = ai.categories[0]?.key ?? '?';
     return { ok: true, tag: `[${tag} | ${cat} | ${size.assessment}]` };
   } catch (err) {

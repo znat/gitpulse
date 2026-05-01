@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { ChangesNodeOutput } from './schemas.ts';
 import type { CommitRecord, Story } from './types.ts';
-import type { PRData } from './github.ts';
+import type { CommitContext } from './github.ts';
 import type { SizeAssessmentOutput } from './schemas.ts';
 
 export function writeStory(outDir: string, story: Story): string {
@@ -17,18 +17,19 @@ export function buildStoryFromCommit(opts: {
   commit: CommitRecord;
   ai: ChangesNodeOutput;
   size: SizeAssessmentOutput;
-  pr: PRData | null;
+  context: CommitContext;
 }): Story {
-  const { repoFullName, commit, ai, size, pr } = opts;
+  const { repoFullName, commit, ai, size, context } = opts;
+  const { pr, commitAuthor } = context;
   const isMerge = pr !== null;
 
-  const author = pr?.authorLogin ?? commit.authorName;
-  // Only set authorUrl when we have a verified GitHub login (from PR data).
-  // Git committer names are display names, not GitHub handles, so any URL
-  // we construct from them would 404.
-  const authorUrl = pr?.authorUrl ?? undefined;
+  // Author resolution priority:
+  //   1. PR author from GraphQL (verified GitHub login)
+  //   2. Commit's GraphQL Commit.author.user (verified GitHub login)
+  //   3. Git committer name (display name only — no URL)
+  const author = pr?.authorLogin ?? commitAuthor?.login ?? commit.authorName;
+  const authorUrl = pr?.authorUrl ?? commitAuthor?.url ?? undefined;
 
-  // Use PR-reported additions/deletions/filesChanged if available, else local stat
   const additions = pr?.additions ?? commit.insertions;
   const deletions = pr?.deletions ?? commit.deletions;
   const filesChanged = pr?.changedFiles ?? commit.filesChanged;
