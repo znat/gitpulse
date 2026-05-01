@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Story } from '@/lib/stories';
+import { storyPath } from '@/lib/urls';
 
 // Tier 2 — user-visible bug fixes. Two-column compact band with teal "FIX" kicker.
 
@@ -33,7 +34,7 @@ function FixArticle({ story }: { story: Story }) {
       </div>
       <h4 className="m-0 mt-0.5 font-feed-display text-[1.0625rem] font-semibold leading-[1.3] text-[var(--text-primary)]">
         <Link
-          href={`/stories/${story.id}/`}
+          href={storyPath(story)}
           className="text-inherit no-underline transition-colors duration-150 hover:text-[var(--feed-teal)]"
         >
           {story.headline}

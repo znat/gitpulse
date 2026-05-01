@@ -11,6 +11,7 @@ import {
   categoryDisplayName,
   sizeLabel,
 } from '@/lib/stories';
+import { storyPath } from '@/lib/urls';
 import { SizeBars } from '@/components/SizeBars';
 
 export type PRFeedItemVariant = 'hero' | 'standard' | 'compact';
@@ -45,7 +46,7 @@ function formatDate(iso: string): string {
 }
 
 export function PRFeedItem({ story, variant = 'standard', meta, unwrapped }: PRFeedItemProps) {
-  const detailUrl = `/stories/${story.id}/`;
+  const detailUrl = storyPath(story);
   const cat = primaryCategory(story);
   const dateLabel =
     story.kind === 'pr' && story.mergedAt

@@ -14,6 +14,7 @@ import {
   type Story,
   primaryCategory,
 } from './stories';
+import { storyPath, storyOgImagePath } from './urls';
 
 const SITE_NAME = 'Gitpulse';
 
@@ -106,8 +107,8 @@ function buildStoryTitle(story: Story): string {
 export function buildStoryMetadata(story: Story): Metadata {
   const title = buildStoryTitle(story);
   const description = truncateDescription(story.standfirst);
-  const url = canonicalUrl(`/stories/${story.id}/`);
-  const ogImage = canonicalUrl(`/stories/${story.id}/opengraph-image.png`);
+  const url = canonicalUrl(storyPath(story));
+  const ogImage = canonicalUrl(storyOgImagePath(story));
   const publishedTime = story.mergedAt ?? story.committedAt;
 
   return {

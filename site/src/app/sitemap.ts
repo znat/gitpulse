@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { canonicalUrl } from '@/lib/seo';
 import { loadStories } from '@/lib/stories-loader';
+import { storyPath } from '@/lib/urls';
 
 export const dynamic = 'force-static';
 
@@ -19,7 +20,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   for (const story of stories) {
     entries.push({
-      url: canonicalUrl(`/stories/${story.id}/`),
+      url: canonicalUrl(storyPath(story)),
       lastModified: new Date(story.mergedAt ?? story.committedAt),
       changeFrequency: 'monthly',
       priority: 0.8,

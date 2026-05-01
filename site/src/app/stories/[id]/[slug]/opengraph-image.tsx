@@ -5,6 +5,7 @@ import {
   categoryDisplayName,
   sizeLabel,
 } from '@/lib/stories';
+import { storySlug } from '@/lib/urls';
 
 export const dynamic = 'force-static';
 export const size = { width: 1200, height: 630 };
@@ -12,13 +13,13 @@ export const contentType = 'image/png';
 export const alt = 'gitpulse story';
 
 export function generateStaticParams() {
-  return loadStories().map((s) => ({ id: s.id }));
+  return loadStories().map((s) => ({ id: s.id, slug: storySlug(s.headline) }));
 }
 
 export default async function OG({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string; slug: string }>;
 }) {
   const { id } = await params;
   const story = loadStory(id);

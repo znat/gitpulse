@@ -5,16 +5,22 @@ import { primaryCategory, categoryDisplayName } from '@/lib/stories';
 import { loadStories, loadStory } from '@/lib/stories-loader';
 import { buildStoryMetadata, canonicalUrl } from '@/lib/seo';
 import { JsonLd, buildStoryJsonLd } from '@/lib/json-ld';
+import { storySlug, storyPath, storyOgImagePath } from '@/lib/urls';
 import { SizeBars } from '@/components/SizeBars';
 
-export function generateStaticParams() {
-  return loadStories().map((s) => ({ id: s.id }));
+interface RouteParams {
+  id: string;
+  slug: string;
+}
+
+export function generateStaticParams(): RouteParams[] {
+  return loadStories().map((s) => ({ id: s.id, slug: storySlug(s.headline) }));
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<RouteParams>;
 }): Promise<Metadata> {
   const { id } = await params;
   const story = loadStory(id);
@@ -31,7 +37,7 @@ const dateFmt = new Intl.DateTimeFormat('en-US', {
 export default async function StoryPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<RouteParams>;
 }) {
   const { id } = await params;
   const story = loadStory(id);
@@ -46,8 +52,8 @@ export default async function StoryPage({
       ? `Merged ${dateFmt.format(new Date(story.mergedAt ?? story.committedAt))}`
       : `Pushed ${dateFmt.format(new Date(story.committedAt))}`;
 
-  const url = canonicalUrl(`/stories/${story.id}/`);
-  const ogImageUrl = canonicalUrl(`/stories/${story.id}/opengraph-image.png`);
+  const url = canonicalUrl(storyPath(story));
+  const ogImageUrl = canonicalUrl(storyOgImagePath(story));
   const jsonLd = buildStoryJsonLd({
     story,
     canonicalUrl: url,

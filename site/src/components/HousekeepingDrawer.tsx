@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { type Story, primaryCategory } from '@/lib/stories';
+import { storyPath } from '@/lib/urls';
 
 // Tier 3 — invisible-to-users changes (deps, CI, refactors, etc.). Collapsed
 // by default; expanding reveals a terminal-style changelog list.
@@ -55,7 +56,7 @@ function HousekeepingRow({ story }: { story: Story }) {
       </span>
       <span className="flex-1 truncate text-[var(--text-primary)]">
         <Link
-          href={`/stories/${story.id}/`}
+          href={storyPath(story)}
           className="text-inherit no-underline transition-colors duration-150 hover:text-[var(--feed-teal)]"
         >
           {story.headline}
