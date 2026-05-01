@@ -16,11 +16,15 @@ export interface RuntimeConfig {
 export function loadConfig(env = process.env): RuntimeConfig {
   const repoFullName = required(env, 'GITHUB_REPOSITORY');
   const apiKey = required(env, 'OPENAI_API_KEY');
+  // Resolve repoDir: explicit env, then GITHUB_WORKSPACE (set in Actions),
+  // then cwd. Yarn workspace scripts run with cwd set to the workspace
+  // dir, so we can't trust cwd in CI.
+  const repoDir = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE ?? process.cwd();
 
   return {
-    repoDir: env.GITPULSE_REPO_DIR ?? process.cwd(),
+    repoDir,
     repoFullName,
-    outDir: env.GITPULSE_OUT_DIR ?? `${process.cwd()}/site/src/content/stories`,
+    outDir: env.GITPULSE_OUT_DIR ?? `${repoDir}/site/src/content/stories`,
     branch: env.GITPULSE_BRANCH || undefined,
     bootstrapDays: Number(env.GITPULSE_BOOTSTRAP_DAYS ?? 30),
     limit: env.GITPULSE_LIMIT ? Number(env.GITPULSE_LIMIT) : undefined,
