@@ -23,7 +23,10 @@ export function buildStoryFromCommit(opts: {
   const isMerge = pr !== null;
 
   const author = pr?.authorLogin ?? commit.authorName;
-  const authorUrl = pr?.authorUrl ?? `https://github.com/${encodeURIComponent(commit.authorName)}`;
+  // Only set authorUrl when we have a verified GitHub login (from PR data).
+  // Git committer names are display names, not GitHub handles, so any URL
+  // we construct from them would 404.
+  const authorUrl = pr?.authorUrl ?? undefined;
 
   // Use PR-reported additions/deletions/filesChanged if available, else local stat
   const additions = pr?.additions ?? commit.insertions;
