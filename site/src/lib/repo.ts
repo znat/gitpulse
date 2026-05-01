@@ -8,7 +8,7 @@ export interface RepoInfo {
   url: string;
 }
 
-const REPO_PATH = join(process.cwd(), 'src/content/repo.json');
+const REPO_PATH = join(process.cwd(), 'public/data/repo.json');
 
 export function loadRepo(): RepoInfo {
   try {

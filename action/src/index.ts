@@ -1,13 +1,27 @@
-import { loadConfig } from './config.ts';
-import { defaultBranch, walkCommits } from './git.ts';
-import { fetchFileChanges, formatCommitAsPRContext, formatPRContext } from './commit-context.ts';
-import { createSummarizer, postProcessOutput } from './llm.ts';
-import { buildStoryFromCommit, writeStory } from './render.ts';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { loadConfig, type RuntimeConfig } from './config.ts';
+import { defaultBranch, walkCommits } from './git.ts';
+import {
+  fetchFileChanges,
+  formatCommitAsPRContext,
+  formatPRContext,
+} from './commit-context.ts';
+import { createSummarizer, postProcessOutput } from './llm.ts';
+import { buildStoryFromCommit, writeStory } from './render.ts';
 import { GitHubClient, parseRepoFullName, type RepoInfo } from './github.ts';
 import { assessPRSize } from './size.ts';
 import { pMap } from './pmap.ts';
+import {
+  SiteFetcher,
+  readAllStories,
+} from './site-fetcher.ts';
+import {
+  buildManifestFromStories,
+  buildStateFromStories,
+  writeManifest,
+  writeState,
+} from './state.ts';
 import type { CommitRecord } from './types.ts';
 
 async function main() {
@@ -19,55 +33,82 @@ async function main() {
   console.log(
     `[gitpulse] ai.protocol=${cfg.ai.protocol} ai.model=${cfg.ai.model} ai.baseURL=${cfg.ai.baseURL ?? '(default)'}`,
   );
-  console.log(`[gitpulse] github.token=${cfg.githubToken ? '(set)' : '(missing — direct-push only)'}`);
+  console.log(
+    `[gitpulse] github.token=${cfg.githubToken ? '(set)' : '(missing — direct-push only)'}`,
+  );
+  console.log(`[gitpulse] site.url=${cfg.siteUrl}`);
   console.log(`[gitpulse] concurrency=${cfg.concurrency}`);
 
-  const commits = walkCommits({
+  // Restore prior content from the deployed site.
+  const fetcher = new SiteFetcher(cfg.siteUrl);
+  const priorManifest = await fetcher.fetchManifest();
+  const seenSha = new Set<string>();
+  if (priorManifest) {
+    console.log(`[gitpulse] prior manifest: ${priorManifest.entries.length} entries`);
+    const { restored, failed } = await fetcher.restorePriorStories({
+      manifest: priorManifest,
+      storiesDir: cfg.storiesDir,
+      concurrency: cfg.concurrency,
+    });
+    console.log(`[gitpulse] restored ${restored}/${priorManifest.entries.length} prior stories (${failed} failed)`);
+    for (const e of priorManifest.entries) seenSha.add(e.sha);
+  } else {
+    console.log(`[gitpulse] no prior manifest at ${cfg.siteUrl}data/manifest.json — bootstrap`);
+  }
+
+  // Fetch + persist repo metadata.
+  const gh = cfg.githubToken ? new GitHubClient(cfg.githubToken) : null;
+  const { owner, repo } = parseRepoFullName(cfg.repoFullName);
+  const repoInfo: RepoInfo = gh
+    ? await gh.fetchRepo(owner, repo)
+    : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` };
+  writeJson(`${cfg.dataDir}/repo.json`, repoInfo);
+
+  // Walk + filter commits.
+  const allCommits = walkCommits({
     repoDir: cfg.repoDir,
     branch,
     since,
     limit: cfg.limit,
   });
-  console.log(`[gitpulse] commits to process: ${commits.length}`);
-  if (commits.length === 0) {
-    console.log('[gitpulse] nothing to do');
-    return;
+  const newCommits = allCommits.filter((c) => !seenSha.has(c.sha));
+  console.log(
+    `[gitpulse] commits in window: ${allCommits.length}, new (not in manifest): ${newCommits.length}`,
+  );
+
+  if (newCommits.length === 0) {
+    console.log('[gitpulse] no new commits to analyze');
+  } else {
+    const summarize = createSummarizer(cfg.ai);
+    let processed = 0;
+    let failed = 0;
+    await pMap(newCommits, cfg.concurrency, async (baseCommit) => {
+      const result = await processCommit({
+        baseCommit,
+        cfg,
+        summarize,
+        gh,
+        owner,
+        repo,
+      });
+      if (result.ok) {
+        processed++;
+        console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✓ ${result.tag}`);
+      } else {
+        failed++;
+        console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✗ ${result.error}`);
+      }
+    });
+    console.log(`[gitpulse] wrote ${processed}/${newCommits.length} new stories (${failed} failed)`);
   }
 
-  const summarize = createSummarizer(cfg.ai);
-  const gh = cfg.githubToken ? new GitHubClient(cfg.githubToken) : null;
-  const { owner, repo } = parseRepoFullName(cfg.repoFullName);
-
-  // Fetch + persist repo metadata for the site's RepoHeader.
-  const repoInfo: RepoInfo = gh
-    ? await gh.fetchRepo(owner, repo)
-    : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` };
-  writeRepoJson(cfg.outDir, repoInfo);
-
-  let processed = 0;
-  let failed = 0;
-
-  await pMap(commits, cfg.concurrency, async (baseCommit) => {
-    const result = await processCommit({
-      baseCommit,
-      cfg,
-      summarize,
-      gh,
-      owner,
-      repo,
-    });
-    if (result.ok) {
-      processed++;
-      console.log(
-        `  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✓ ${result.tag}`,
-      );
-    } else {
-      failed++;
-      console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✗ ${result.error}`);
-    }
-  });
-
-  console.log(`[gitpulse] wrote ${processed}/${commits.length} stories (${failed} failed)`);
+  // Rebuild manifest + state from the on-disk story set.
+  const allStories = readAllStories(cfg.storiesDir);
+  writeManifest(cfg.dataDir, buildManifestFromStories(allStories));
+  writeState(cfg.dataDir, buildStateFromStories(allStories));
+  console.log(
+    `[gitpulse] manifest: ${allStories.length} total stories, state cursor=${allStories[0]?.sha.slice(0, 7) ?? '(empty)'}`,
+  );
 }
 
 interface ProcessOk {
@@ -82,7 +123,7 @@ type ProcessResult = ProcessOk | ProcessFail;
 
 async function processCommit(opts: {
   baseCommit: CommitRecord;
-  cfg: ReturnType<typeof loadConfig>;
+  cfg: RuntimeConfig;
   summarize: ReturnType<typeof createSummarizer>;
   gh: GitHubClient | null;
   owner: string;
@@ -111,7 +152,7 @@ async function processCommit(opts: {
       size,
       pr,
     });
-    writeStory(cfg.outDir, story);
+    writeStory(cfg.storiesDir, story);
 
     const tag = pr ? `pr#${pr.number}` : 'commit';
     const cat = ai.categories[0]?.key ?? '?';
@@ -119,16 +160,6 @@ async function processCommit(opts: {
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
-}
-
-function writeRepoJson(outDir: string, info: RepoInfo): void {
-  // outDir = .../site/src/content/stories — write repo.json one level up at
-  // .../site/src/content/repo.json
-  const contentDir = dirname(outDir);
-  const path = `${contentDir}/repo.json`;
-  mkdirSync(contentDir, { recursive: true });
-  writeFileSync(path, JSON.stringify(info, null, 2) + '\n');
-  console.log(`[gitpulse] wrote ${path}`);
 }
 
 function computeStatTotals(files: { additions: number; deletions: number }[]): {
@@ -141,6 +172,11 @@ function computeStatTotals(files: { additions: number; deletions: number }[]): {
     deletions: files.reduce((s, f) => s + f.deletions, 0),
     filesChanged: files.length,
   };
+}
+
+function writeJson(path: string, obj: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(obj, null, 2) + '\n');
 }
 
 function isoDaysAgo(days: number): string {

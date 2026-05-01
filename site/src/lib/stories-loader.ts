@@ -4,17 +4,17 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Story } from './stories';
 
-const CONTENT_DIR = join(process.cwd(), 'src/content/stories');
+const STORIES_DIR = join(process.cwd(), 'public/data/stories');
 
 export function loadStories(): Story[] {
   let files: string[] = [];
   try {
-    files = readdirSync(CONTENT_DIR).filter((f) => f.endsWith('.json'));
+    files = readdirSync(STORIES_DIR).filter((f) => f.endsWith('.json'));
   } catch {
     return [];
   }
   return files
-    .map((f) => JSON.parse(readFileSync(join(CONTENT_DIR, f), 'utf8')) as Story)
+    .map((f) => JSON.parse(readFileSync(join(STORIES_DIR, f), 'utf8')) as Story)
     .sort((a, b) => b.committedAt.localeCompare(a.committedAt));
 }
 
