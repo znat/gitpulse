@@ -1,6 +1,5 @@
-// Lifted verbatim from gitsky/src/services/pr-analysis/size-assessment.ts.
-// Rule-based, no LLM. Thresholds match gitsky's defaults; configurability
-// (with custom formulas) is a future phase.
+// Rule-based size bucketing (no LLM). Configurability (with custom formulas)
+// is a future phase.
 
 import type { SizeAssessment, SizeAssessmentOutput } from './schemas.ts';
 

@@ -25,3 +25,15 @@ export function loadRepo(): RepoInfo {
     };
   }
 }
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+export function publicationName(repo: RepoInfo): string {
+  return `The ${capitalize(repo.repo)} Conversation`;
+}
+
+export function publicationSubtitle(repo: RepoInfo): string {
+  return `${repo.owner}/${repo.repo} · Development Activity Intelligence`;
+}

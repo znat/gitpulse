@@ -1,4 +1,3 @@
-// Lifted verbatim from gitsky/src/services/pr-analysis/gemini-client.ts.
 // MiniMax refuses tool calling when schemas contain min/max constraints, so we
 // convert the zod schema to a JSON Schema and recursively strip them.
 

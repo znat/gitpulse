@@ -17,6 +17,8 @@ import {
   Vollkorn,
 } from 'next/font/google';
 import { TopBar } from '@/components/TopBar';
+import { Footer } from '@/components/Footer';
+import { loadRepo, publicationName } from '@/lib/repo';
 import './globals.css';
 
 const playfairDisplay = Playfair_Display({
@@ -145,11 +147,13 @@ export default function RootLayout({
     cormorantGaramond.variable,
   ].join(' ');
 
+  const repo = loadRepo();
   return (
     <html lang="en" data-theme="light" data-font="nyt">
       <body className={fontVariables}>
-        <TopBar />
+        <TopBar publicationName={publicationName(repo)} />
         {children}
+        <Footer />
       </body>
     </html>
   );

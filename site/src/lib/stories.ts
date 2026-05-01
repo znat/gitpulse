@@ -52,18 +52,6 @@ export interface Story {
   mergedAt?: string;
 }
 
-const SIZE_DISPLAY: Record<SizeAssessment, string> = {
-  xs: 'XS',
-  small: 'S',
-  medium: 'M',
-  large: 'L',
-  xl: 'XL',
-};
-
-export function sizeLabel(s: SizeAssessment): string {
-  return SIZE_DISPLAY[s];
-}
-
 const CATEGORY_DISPLAY: Record<CategoryKey, string> = {
   feature: 'New Feature',
   bugfix: 'Bug Fix',
@@ -88,6 +76,18 @@ export function primaryCategory(story: Story): CategoryEntry | null {
   return sorted[0] ?? null;
 }
 
+const SIZE_LABEL: Record<SizeAssessment, string> = {
+  xs: 'XS',
+  small: 'S',
+  medium: 'M',
+  large: 'L',
+  xl: 'XL',
+};
+
+export function sizeLabel(s: SizeAssessment): string {
+  return SIZE_LABEL[s];
+}
+
 const CONTENT_DIR = join(process.cwd(), 'src/content/stories');
 
 export function loadStories(): Story[] {
@@ -104,4 +104,50 @@ export function loadStories(): Story[] {
 
 export function loadStory(id: string): Story | null {
   return loadStories().find((s) => s.id === id) ?? null;
+}
+
+export interface StoryDay {
+  date: string;
+  dateLabel: string;
+  features: Story[];
+  bugfixes: Story[];
+  housekeeping: Story[];
+}
+
+const dayLabelFmt = new Intl.DateTimeFormat('en-US', {
+  weekday: 'long',
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+export function groupByDay(stories: Story[]): StoryDay[] {
+  const byDate = new Map<string, Story[]>();
+  for (const story of stories) {
+    const date = story.committedAt.slice(0, 10);
+    const arr = byDate.get(date) ?? [];
+    arr.push(story);
+    byDate.set(date, arr);
+  }
+
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([date, dayStories]) => {
+      const features: Story[] = [];
+      const bugfixes: Story[] = [];
+      const housekeeping: Story[] = [];
+      for (const story of dayStories) {
+        const cat = primaryCategory(story);
+        if (cat?.key === 'feature') features.push(story);
+        else if (cat?.key === 'bugfix') bugfixes.push(story);
+        else housekeeping.push(story);
+      }
+      return {
+        date,
+        dateLabel: dayLabelFmt.format(new Date(date + 'T12:00:00Z')),
+        features,
+        bugfixes,
+        housekeeping,
+      };
+    });
 }

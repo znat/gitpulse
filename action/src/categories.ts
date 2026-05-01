@@ -1,5 +1,3 @@
-// Lifted verbatim from gitsky/src/services/pr-analysis/categories.ts
-
 export const PR_CATEGORIES = {
   feature: { key: 'feature', displayName: 'New Feature' },
   bugfix: { key: 'bugfix', displayName: 'Bug Fix' },

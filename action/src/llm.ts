@@ -8,7 +8,7 @@ import { PR_CATEGORY_KEYS } from './categories.ts';
 import type { AISummary } from './types.ts';
 
 // ============================================================
-// SYSTEM PROMPT — lifted verbatim from gitsky/src/services/pr-analysis/nodes/changes.ts
+// SYSTEM PROMPT
 // ============================================================
 
 const WRITING_STYLE_RULES = `AVOID AI-SOUNDING PATTERNS:
@@ -94,8 +94,8 @@ Examples:
 - Block: [[codeblock lang="yaml"]]key: value[[/codeblock]]`;
 
 // ============================================================
-// USER PROMPT — lifted from gitsky's buildUserPrompt, adapted for commit-only
-// data (no GraphQL PR fetcher in v0). Same instruction blocks.
+// USER PROMPT — instruction blocks, adapted for commit-only data when no PR
+// is associated.
 // ============================================================
 
 function buildCategoriesInstruction(): string {
@@ -118,7 +118,7 @@ function buildStoryInstruction(): string {
    - **WHY IT MATTERS**: Why should anyone care? What problem does this solve or what friction does it remove? (1-2 sentences)
    - **WHERE IN THE PROJECT**: Situate the change — which package, service, app, or area of the
      codebase does this touch? On large monorepos this helps readers orient immediately.
-     E.g., "in the sync pipeline", "on the settings page", "in the [[code]]@gitsky/web[[/code]] app". (1 short clause)
+     E.g., "in the sync pipeline", "on the settings page", "in the [[code]]@gitpulse/site[[/code]] app". (1 short clause)
    - **SCOPE**: Part of a larger initiative? If linked issues mention a bigger effort, mention it. (0-1 sentences)
 
    Write as continuous prose with natural paragraph breaks — NO subtitles, NO bullets.
@@ -257,7 +257,7 @@ ${instructions}`;
 
 // ============================================================
 // LLM client + invocation — supports both OpenAI-compatible and
-// Anthropic-compatible endpoints. Uses gitsky's invokeStructured pattern
+// Anthropic-compatible endpoints. Uses an invokeStructured pattern
 // (functionCalling + stripped schema) for MiniMax compatibility.
 // ============================================================
 
@@ -322,13 +322,13 @@ export function createSummarizer(config: LLMConfig) {
     // MiniMax we hand the model the stripped JSON schema — re-validation
     // against the bounded schema would reject perfectly-good outputs whose
     // story/technicalDescription happens to exceed the soft limit. Matches
-    // gitsky's invokeStructured pattern.
+    // tool-call output is trusted as-returned by LangChain.
     return response.parsed as ChangesNodeOutput;
   };
 }
 
 // ============================================================
-// Post-processing — lifted from gitsky/nodes/changes.ts
+// Post-processing
 // ============================================================
 
 export function postProcessOutput(data: ChangesNodeOutput): ChangesNodeOutput {

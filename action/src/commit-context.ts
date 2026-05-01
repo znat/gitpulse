@@ -55,7 +55,7 @@ function run(cmd: string, cwd: string): string {
   return execSync(cmd, { cwd, encoding: 'utf8', maxBuffer: 1024 * 1024 * 16 });
 }
 
-// Format a single commit (no associated PR) as a gitsky-style PR context block.
+// Format a single commit (no associated PR) as a PR-context prompt block.
 export function formatCommitAsPRContext(commit: CommitRecord): string {
   const filesText =
     commit.files.length > 0
@@ -80,7 +80,7 @@ ${description}
 ${filesText}`;
 }
 
-// Format a merged PR (with the local commit's diffs) as a gitsky-style context block.
+// Format a merged PR (with the local commit's diffs) as a PR-context prompt block.
 export function formatPRContext(commit: CommitRecord, pr: PRData): string {
   const filesText =
     commit.files.length > 0

@@ -31,7 +31,7 @@ export interface Story {
   author: string;
   authorUrl?: string;
   committedAt: string;
-  // gitsky-style ChangesNodeOutput fields, lifted into the story:
+  // ChangesNodeOutput fields:
   categories: CategoryEntry[];
   headline: string;
   standfirst: string;

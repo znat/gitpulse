@@ -1,5 +1,4 @@
-// Lifted from gitsky/src/services/pr-analysis/schemas.ts (Changes node only;
-// review/synthesis/highlights schemas omitted — gitpulse v0 doesn't use them).
+// Changes-node schemas (review/synthesis/highlights omitted from v0).
 
 import { z } from 'zod';
 import { PR_CATEGORY_KEYS } from './categories.ts';
@@ -39,7 +38,6 @@ export const ChangesNodeOutputSchema = z.object({
 
 export type ChangesNodeOutput = z.infer<typeof ChangesNodeOutputSchema>;
 
-// Lifted verbatim from gitsky/src/services/pr-analysis/schemas.ts
 export const SizeAssessmentSchema = z.enum([
   'xs',
   'small',
