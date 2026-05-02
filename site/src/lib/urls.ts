@@ -23,9 +23,16 @@ export function storyPathSlug(headline: string): string {
 }
 
 function storyBasePath(story: Story): string {
-  return story.kind === 'pr'
-    ? `/pull/${story.prNumber}`
-    : `/commit/${story.sha}`;
+  if (story.kind === 'pr') {
+    if (typeof story.prNumber !== 'number' || !Number.isFinite(story.prNumber)) {
+      throw new Error(`Story ${story.id} is kind='pr' but missing prNumber`);
+    }
+    return `/pull/${story.prNumber}`;
+  }
+  if (!story.sha) {
+    throw new Error(`Story ${story.id} is missing sha`);
+  }
+  return `/commit/${story.sha}`;
 }
 
 export function storyPath(story: Story): string {
