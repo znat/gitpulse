@@ -52,18 +52,23 @@ export function generateStaticParams(): RouteParams[] {
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { tag } = await params;
+  const { tag, slug } = await params;
   if (tag === EMPTY_STUB_TAG) return {};
   const release = loadRelease(tag);
   if (!release) return {};
+  if (slug !== releaseSlug(release)) return {};
   return buildReleaseMetadata(release);
 }
 
 export default async function ReleaseDetailPage({ params }: PageProps) {
-  const { tag } = await params;
+  const { tag, slug } = await params;
   if (tag === EMPTY_STUB_TAG) notFound();
   const release = loadRelease(tag);
   if (!release) notFound();
+  // Reject alternate slugs that decode to the same release, so /releases/
+  // <tag>/<wrong-slug>/ 404s instead of serving identical content under two
+  // canonical URLs.
+  if (slug !== releaseSlug(release)) notFound();
 
   const allStories = loadStories();
   const changelogStories = resolveChangelog(release, allStories);

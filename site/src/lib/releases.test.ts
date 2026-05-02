@@ -49,6 +49,14 @@ describe('formatReleaseDate', () => {
   it('formats an ISO date as "Month Day, Year"', () => {
     expect(formatReleaseDate('2026-05-02T12:00:00Z')).toBe('May 2, 2026');
   });
+
+  it('uses UTC at the day boundary (no host-tz date shift)', () => {
+    // Without timeZone: 'UTC', this would render as May 1 in any
+    // host TZ west of GMT — pinning the formatter to UTC keeps the
+    // displayed date consistent with publishedAt.
+    expect(formatReleaseDate('2026-05-02T00:00:00Z')).toBe('May 2, 2026');
+    expect(formatReleaseDate('2026-05-02T23:59:59Z')).toBe('May 2, 2026');
+  });
 });
 
 describe('groupReleasesByDay', () => {

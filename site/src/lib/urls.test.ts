@@ -109,6 +109,12 @@ describe('releaseSlug', () => {
     const release = makeRelease({ name: null, tag: 'v1.0.0' });
     expect(releaseSlug(release)).toBe('v1-0-0');
   });
+
+  it('falls back to the tag when name is an empty string', () => {
+    // Regression: `??` would have let '' through, yielding an empty slug.
+    const release = makeRelease({ name: '', tag: 'v1.0.0' });
+    expect(releaseSlug(release)).toBe('v1-0-0');
+  });
 });
 
 describe('releasePath', () => {

@@ -172,10 +172,10 @@ function CtaRow({ url, prCount }: { url: string; prCount: number }) {
     <div className="flex items-center justify-between pt-1">
       <Link
         href={url}
-        className="font-feed-mono text-xs font-medium text-feed-gold inline-flex items-center gap-2 hover:opacity-80 hover:gap-3 transition-all"
+        className="group/cta font-feed-mono text-xs font-medium text-feed-gold inline-flex items-center gap-2 hover:opacity-80 hover:gap-3 transition-all"
       >
         Read the Full Edition
-        <span className="text-base transition-transform group-hover:translate-x-[3px]">&rarr;</span>
+        <span className="text-base transition-transform group-hover/cta:translate-x-[3px]">&rarr;</span>
       </Link>
       <span className="font-feed-mono text-[0.6875rem] text-muted">
         {prCount} {prCount === 1 ? 'story' : 'stories'} inside

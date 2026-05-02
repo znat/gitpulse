@@ -46,10 +46,14 @@ export interface ReleaseManifest {
   entries: ReleaseManifestEntry[];
 }
 
+// Pin to UTC so the formatted date matches the ISO publishedAt regardless
+// of the host timezone — without this, dates near midnight UTC can shift
+// by a day on the build machine.
 const RELEASES_DATE_FMT = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
   month: 'long',
   day: 'numeric',
+  timeZone: 'UTC',
 });
 
 export function formatReleaseDate(iso: string): string {

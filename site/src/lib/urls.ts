@@ -34,7 +34,8 @@ export function releasesIndexPath(): string {
 }
 
 export function releaseSlug(release: Release): string {
-  return slugify(release.name ?? release.tag);
+  // `||` (not `??`) so empty-string names fall back to the tag.
+  return slugify(release.name || release.tag);
 }
 
 export function releasePath(release: Release): string {

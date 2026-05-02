@@ -32,9 +32,11 @@ export function ReleasesListStandardCard({ release }: { release: Release }) {
           <span className="text-muted opacity-50">&middot;</span>
           <span className="text-muted">{dateStr}</span>
         </div>
-        <h3 className="font-feed-vollkorn text-2xl italic font-normal leading-[1.3] text-foreground mb-2 transition-colors group-hover:opacity-80">
-          &ldquo;{release.quip}&rdquo;
-        </h3>
+        {release.quip && (
+          <h3 className="font-feed-vollkorn text-2xl italic font-normal leading-[1.3] text-foreground mb-2 transition-colors group-hover:opacity-80">
+            &ldquo;{release.quip}&rdquo;
+          </h3>
+        )}
         {release.name && (
           <div className="font-feed-mono text-[0.625rem] uppercase tracking-[0.1em] text-muted mb-3">
             Release &mdash; {release.name}
