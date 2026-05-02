@@ -38,6 +38,23 @@ describe('isDiffContent', () => {
   it('returns false for empty string', () => {
     expect(isDiffContent('')).toBe(false);
   });
+
+  it('returns false for addition-only content with no hunk header', () => {
+    // Code that happens to have many +-led lines (e.g. arithmetic, CLI output)
+    // but no deletions should not flip into the diff viewer.
+    const code = `+ something
++ another thing
++ third
++ fourth`;
+    expect(isDiffContent(code)).toBe(false);
+  });
+
+  it('returns false for deletion-only content with no hunk header', () => {
+    const code = `- thing
+- another
+- third`;
+    expect(isDiffContent(code)).toBe(false);
+  });
 });
 
 describe('extractCleanCode', () => {

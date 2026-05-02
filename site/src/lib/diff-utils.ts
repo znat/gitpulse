@@ -67,9 +67,12 @@ export function isDiffContent(code: string): boolean {
     else if (line.startsWith(' ')) context++;
   }
   const diffLines = additions + deletions + context;
+  // Require BOTH + and - lines (when no hunk header is present) so dense
+  // +/− led code that isn't actually a diff doesn't flip into the diff viewer.
   return (
     diffLines >= 3 &&
-    (additions > 0 || deletions > 0) &&
+    additions > 0 &&
+    deletions > 0 &&
     diffLines / lines.length >= 0.6
   );
 }

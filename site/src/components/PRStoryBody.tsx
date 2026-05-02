@@ -75,7 +75,7 @@ function TabButton({
         inactiveMono ? 'font-mono' : 'font-medium'
       }`;
   return (
-    <button onClick={onClick} className={`${base} ${state}`}>
+    <button type="button" onClick={onClick} className={`${base} ${state}`}>
       {icon}
       {label}
     </button>
