@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.0](https://github.com/znat/gitpulse/compare/v0.1.0...v0.1.0) (2026-05-02)
+
+
+### Bug Fixes
+
+* populate first-release editions and simplify URL ([#22](https://github.com/znat/gitpulse/issues/22)) ([762cd86](https://github.com/znat/gitpulse/commit/762cd861748dd04f8a160e5d6ca40b89d2d1ea66))
+
 ## 0.1.0 (2026-05-02)
 
 
