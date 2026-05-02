@@ -36,9 +36,17 @@ export function listReachableShas(repoDir: string, ref: string): string[] {
       ['log', ref, '--pretty=format:%H'],
       { cwd: repoDir, encoding: 'utf8' },
     );
-    if (result.status !== 0) return [];
+    if (result.status !== 0) {
+      console.warn(
+        `[gitpulse] listReachableShas: git log "${ref}" exited ${result.status}: ${result.stderr?.trim() ?? ''}`,
+      );
+      return [];
+    }
     return result.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
-  } catch {
+  } catch (err) {
+    console.warn(
+      `[gitpulse] listReachableShas: git log "${ref}" failed: ${err instanceof Error ? err.message : err}`,
+    );
     return [];
   }
 }
