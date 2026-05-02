@@ -140,3 +140,21 @@ export const ReleaseManifestSchema = z.object({
   generatedAt: z.string().min(1),
   entries: z.array(ReleaseManifestEntrySchema),
 });
+
+// LLM-output schema for release editions. Lifted verbatim from
+// gitsky/apps/web/lib/release-edition-generator.ts so we get the same
+// well-tuned tone constraints in the .describe() text.
+export const ReleaseEditionOutputSchema = z.object({
+  quip: z
+    .string()
+    .describe(
+      'Witty one-liner, max 120 chars, dry deadpan newsroom wit',
+    ),
+  releaseStory: z
+    .string()
+    .describe(
+      '2-3 paragraph editorial narrative, 400-800 chars. Each paragraph MUST be separated by a newline character (\\n). Each paragraph should cover a distinct aspect of the release.',
+    ),
+});
+
+export type ReleaseEditionOutput = z.infer<typeof ReleaseEditionOutputSchema>;
