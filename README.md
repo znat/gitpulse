@@ -143,6 +143,29 @@ Then `yarn workspace @gitpulse/site build` to produce `site/out/` exactly as CI 
 
 ---
 
+## Releasing (maintainers)
+
+Releases are one-click via the **Actions** tab on this repo:
+
+1. Open Actions → **Release** → **Run workflow**.
+2. Enter a semver version without the leading `v` (e.g. `1.0.0`, or `1.1.0-rc.1` for a pre-release).
+3. Click **Run**.
+
+The workflow:
+
+1. Validates the version string and aborts if the tag already exists.
+2. Runs `yarn typecheck` + `yarn test` — release fails on red.
+3. Bumps `version` in the root and both workspace `package.json` files in lockstep.
+4. Commits the bump as `release: v<version>` and pushes to `main`.
+5. Creates an immutable tag (`v1.0.0`) **and** moves the major-version pointer (`v1`) — the moving pointer is what consumers pin via `@v1`.
+6. Creates a real GitHub Release with auto-generated notes (commits since the last tag). Pre-releases (versions with a hyphen suffix) are flagged automatically.
+
+After the release, znat/gitpulse's daily self-deploy will pick up the new release on its next run; the new "Special Edition" appears on the homepage feed and at `/releases/`.
+
+If your repo's `main` is protected and rejects the workflow's push, either allow the `github-actions[bot]` user in branch protection, or replace the default `GITHUB_TOKEN` in the workflow with a Personal Access Token secret with `contents: write` permission.
+
+---
+
 ## License
 
 [AGPL-3.0-or-later](./LICENSE).

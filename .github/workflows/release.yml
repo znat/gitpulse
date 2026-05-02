@@ -1,0 +1,102 @@
+name: Release
+
+# One-click release workflow. Bumps package.json across the workspaces,
+# tags the commit, moves the major-version pointer, and creates a real
+# GitHub Release with auto-generated notes.
+#
+# Trigger: Actions tab → "Release" → Run workflow → enter version (e.g. 1.0.0).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semver version without the leading v (e.g. 1.0.0 or 1.1.0-rc.1)"
+        type: string
+        required: true
+
+permissions:
+  contents: write   # push commits + tags + create release
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version + ensure tag does not already exist
+        run: |
+          VERSION="${{ inputs.version }}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version '$VERSION' is not valid semver."
+            exit 1
+          fi
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag v$VERSION already exists."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Typecheck + tests (gate the release)
+        run: |
+          yarn typecheck
+          yarn test
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump package.json across workspaces
+        run: |
+          VERSION="${{ inputs.version }}"
+          npm pkg set version="$VERSION"
+          npm pkg set version="$VERSION" -w @gitpulse/action
+          npm pkg set version="$VERSION" -w @gitpulse/site
+          git add package.json action/package.json site/package.json
+          git commit -m "release: v$VERSION"
+
+      - name: Create immutable tag + move major-version pointer
+        run: |
+          VERSION="${{ inputs.version }}"
+          MAJOR="v${VERSION%%.*}"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git tag -f "$MAJOR"
+
+      - name: Push commit + tags
+        run: |
+          VERSION="${{ inputs.version }}"
+          MAJOR="v${VERSION%%.*}"
+          git push origin HEAD:main
+          git push origin "v$VERSION"
+          git push origin "$MAJOR" --force
+
+      - name: Create GitHub Release with auto-generated notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          # Pre-release detection: any version with a hyphen suffix is a pre-release.
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --generate-notes \
+            $PRERELEASE_FLAG
