@@ -16,16 +16,20 @@ You'll need:
 - A repo where GitHub Pages is enabled with **Source: GitHub Actions**
 - One repository secret: `OPENAI_API_KEY` (or the equivalent for whichever provider you choose — see below)
 
-Add `.github/workflows/gitpulse.yml`:
+Add `.github/workflows/gitpulse.yml`. Pick the trigger style that matches your cadence — both work and you can change it later:
+
+#### Option A — event-driven (recommended)
+
+Re-publishes the moment something changes: every push to your default branch, every published release, plus a manual trigger. No idle runs, fastest reflection of new content on the site.
 
 ```yaml
 name: Gitpulse
 
 on:
-  schedule:
-    - cron: "0 9 * * *"   # daily at 09:00 UTC
   push:
     branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -40,7 +44,31 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-That's it. The first run bootstraps from the last 30 days of history; subsequent runs only analyze new commits since the last published deploy.
+#### Option B — daily
+
+A single scheduled run per day, plus a manual trigger. Lower CI footprint when activity is sporadic; new content lags by up to a day.
+
+```yaml
+name: Gitpulse
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # daily at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  analyze:
+    uses: znat/gitpulse/.github/workflows/publish.yaml@v1
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Either way: the first run bootstraps from the last 30 days of history; subsequent runs only analyze new commits since the last published deploy.
 
 ### Enable Pages
 
