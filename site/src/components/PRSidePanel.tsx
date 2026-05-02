@@ -55,7 +55,7 @@ function PanelContent() {
           {isLoading && <PanelSkeleton />}
           {error && !isLoading && (
             <p className="text-muted text-sm">
-              Couldn&apos;t load this PR: {error}
+              Couldn&apos;t load this story: {error}
             </p>
           )}
           {story && <PRArticle story={story} variant="panel" />}
