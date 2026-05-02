@@ -10,13 +10,17 @@ export const alt = 'gitpulse release edition';
 // Sentinel matching the page's stub when no releases exist yet.
 const EMPTY_STUB_TAG = '__no_releases_yet__';
 
+// generateStaticParams returns raw segment values — Next.js encodes them
+// when emitting the static filesystem path and decodes them back into the
+// `params` object. Pre-encoding here would double-encode tags that contain
+// special characters (e.g. 'release/v1.0.0').
 export function generateStaticParams() {
   const releases = loadReleases();
   if (releases.length === 0) {
     return [{ tag: EMPTY_STUB_TAG, slug: 'placeholder' }];
   }
   return releases.map((r) => ({
-    tag: encodeURIComponent(r.tag),
+    tag: r.tag,
     slug: releaseSlug(r),
   }));
 }
@@ -27,8 +31,7 @@ export default async function OG({
   params: Promise<{ tag: string; slug: string }>;
 }) {
   const { tag } = await params;
-  const release =
-    tag === EMPTY_STUB_TAG ? null : loadRelease(decodeURIComponent(tag));
+  const release = tag === EMPTY_STUB_TAG ? null : loadRelease(tag);
   if (!release) {
     return new ImageResponse(
       (

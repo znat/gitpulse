@@ -34,13 +34,17 @@ interface PageProps {
 // stub generates one URL that 404s, keeping the route file valid.
 const EMPTY_STUB_TAG = '__no_releases_yet__';
 
+// generateStaticParams returns raw segment values — Next.js encodes them
+// when emitting the static filesystem path and decodes them back into the
+// `params` object. Pre-encoding here would double-encode tags that contain
+// special characters (e.g. 'release/v1.0.0').
 export function generateStaticParams(): RouteParams[] {
   const releases = loadReleases();
   if (releases.length === 0) {
     return [{ tag: EMPTY_STUB_TAG, slug: 'placeholder' }];
   }
   return releases.map((r) => ({
-    tag: encodeURIComponent(r.tag),
+    tag: r.tag,
     slug: releaseSlug(r),
   }));
 }
@@ -50,7 +54,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { tag } = await params;
   if (tag === EMPTY_STUB_TAG) return {};
-  const release = loadRelease(decodeURIComponent(tag));
+  const release = loadRelease(tag);
   if (!release) return {};
   return buildReleaseMetadata(release);
 }
@@ -58,8 +62,7 @@ export async function generateMetadata({
 export default async function ReleaseDetailPage({ params }: PageProps) {
   const { tag } = await params;
   if (tag === EMPTY_STUB_TAG) notFound();
-  const decodedTag = decodeURIComponent(tag);
-  const release = loadRelease(decodedTag);
+  const release = loadRelease(tag);
   if (!release) notFound();
 
   const allStories = loadStories();
