@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   analyze:
-    uses: znat/gitpulse/.github/workflows/analyze.yml@v1
+    uses: znat/gitpulse/.github/workflows/publish.yaml@v1
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```

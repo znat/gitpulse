@@ -12,7 +12,7 @@ on:
 
 jobs:
   run:
-    uses: ./.github/workflows/analyze.yml
+    uses: ./.github/workflows/publish.yaml
     with:
       ai-protocol: openai
       ai-base-url: https://api.minimax.io/v1

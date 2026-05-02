@@ -1,4 +1,4 @@
-name: Gitpulse Analyze
+name: Gitpulse Publish
 
 on:
   workflow_call:
