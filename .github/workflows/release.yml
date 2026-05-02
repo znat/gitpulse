@@ -31,10 +31,21 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Reject dispatch from non-main refs
+        # workflow_dispatch can be launched from any branch. The push step
+        # below pushes HEAD to main, which would silently release non-main
+        # code. Refuse anything but main.
+        run: |
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            echo "::error::Release must be dispatched from main, got '${{ github.ref }}'."
+            exit 1
+          fi
+
       - name: Validate version + ensure tag does not already exist
         run: |
           VERSION="${{ inputs.version }}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+          # SemVer 2.0.0: optional -prerelease and optional +buildmetadata.
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Version '$VERSION' is not valid semver."
             exit 1
           fi
