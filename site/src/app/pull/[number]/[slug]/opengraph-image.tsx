@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { notFound } from 'next/navigation';
 import { loadStories, loadStoryByPrNumber } from '@/lib/stories-loader';
 import {
   primaryCategory,
@@ -26,30 +27,10 @@ export default async function OG({
 }: {
   params: Promise<{ number: string; slug: string }>;
 }) {
-  const { number } = await params;
+  const { number, slug } = await params;
   const story = loadStoryByPrNumber(Number(number));
-  if (!story) {
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            backgroundColor: '#0d0d0c',
-            color: '#f0ede8',
-            fontFamily: 'serif',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 48,
-          }}
-        >
-          Not found
-        </div>
-      ),
-      size,
-    );
-  }
+  if (!story) notFound();
+  if (slug !== storySlug(story.headline)) notFound();
 
   const cat = primaryCategory(story);
   const refLabel =

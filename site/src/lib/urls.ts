@@ -19,17 +19,15 @@ function storyBasePath(story: Story): string {
 }
 
 export function storyPath(story: Story): string {
-  const slug = storySlug(story.headline);
+  const slug = storySlug(story.headline) || 'untitled';
   const base = storyBasePath(story);
-  return slug ? `${base}/${slug}/` : `${base}/`;
+  return `${base}/${slug}/`;
 }
 
 export function storyOgImagePath(story: Story): string {
-  const slug = storySlug(story.headline);
+  const slug = storySlug(story.headline) || 'untitled';
   const base = storyBasePath(story);
-  return slug
-    ? `${base}/${slug}/opengraph-image.png`
-    : `${base}/opengraph-image.png`;
+  return `${base}/${slug}/opengraph-image.png`;
 }
 
 // ── Releases ─────────────────────────────────────────────
