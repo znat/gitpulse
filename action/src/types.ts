@@ -55,3 +55,58 @@ export interface Story {
 }
 
 export type AISummary = ChangesNodeOutput;
+
+// ── Releases ─────────────────────────────────────────────
+//
+// Releases are a sibling entity to Story — not a discriminated kind. They
+// aggregate PRs merged between two tags. The top stories are denormalized
+// here so the site can render the release detail page without re-loading
+// every linked story file.
+
+export interface ReleaseTopStory {
+  storyId: string; // 'pr-42' — links to existing /stories/<id>/<slug>/
+  prNumber: number;
+  headline: string;
+  standfirst: string;
+  authorLogin: string;
+  primaryCategoryKey: string;
+  additions: number;
+  deletions: number;
+}
+
+export interface Release {
+  schemaVersion: number;
+  tag: string;
+  name: string | null;
+  publishedAt: string;
+  authorLogin: string;
+  authorUrl?: string;
+  isPrerelease: boolean;
+  releaseUrl: string;
+  previousTag: string | null;
+  quip: string;
+  releaseStory: string;
+  prCount: number;
+  contributorCount: number;
+  totalAdditions: number;
+  totalDeletions: number;
+  topStories: ReleaseTopStory[];
+  changelogStoryIds: string[];
+  // Hash of the inputs that produced quip+releaseStory. If a later run
+  // produces the same inputsHash for an already-on-disk release, skip the
+  // LLM call entirely.
+  inputsHash: string;
+}
+
+export interface ReleaseManifestEntry {
+  tag: string;
+  slug: string;
+  publishedAt: string;
+  isPrerelease: boolean;
+}
+
+export interface ReleaseManifest {
+  schemaVersion: number;
+  generatedAt: string;
+  entries: ReleaseManifestEntry[];
+}

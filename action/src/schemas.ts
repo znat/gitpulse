@@ -93,3 +93,50 @@ export const StorySchema = z.discriminatedUnion('kind', [
 ]);
 
 export type StorySchemaType = z.infer<typeof StorySchema>;
+
+// ── Releases ─────────────────────────────────────────────
+
+export const ReleaseTopStorySchema = z.object({
+  storyId: z.string().min(1),
+  prNumber: z.number().int().positive(),
+  headline: z.string().min(1),
+  standfirst: z.string(),
+  authorLogin: z.string().min(1),
+  primaryCategoryKey: z.string().min(1),
+  additions: z.number().int().nonnegative(),
+  deletions: z.number().int().nonnegative(),
+});
+
+export const ReleaseSchema = z.object({
+  schemaVersion: z.number().int().positive(),
+  tag: z.string().min(1),
+  name: z.string().nullable(),
+  publishedAt: z.string().min(1),
+  authorLogin: z.string().min(1),
+  authorUrl: z.string().optional(),
+  isPrerelease: z.boolean(),
+  releaseUrl: z.string().min(1),
+  previousTag: z.string().nullable(),
+  quip: z.string(),
+  releaseStory: z.string(),
+  prCount: z.number().int().nonnegative(),
+  contributorCount: z.number().int().nonnegative(),
+  totalAdditions: z.number().int().nonnegative(),
+  totalDeletions: z.number().int().nonnegative(),
+  topStories: z.array(ReleaseTopStorySchema),
+  changelogStoryIds: z.array(z.string().min(1)),
+  inputsHash: z.string().min(1),
+});
+
+export const ReleaseManifestEntrySchema = z.object({
+  tag: z.string().min(1),
+  slug: z.string(),
+  publishedAt: z.string().min(1),
+  isPrerelease: z.boolean(),
+});
+
+export const ReleaseManifestSchema = z.object({
+  schemaVersion: z.number().int().positive(),
+  generatedAt: z.string().min(1),
+  entries: z.array(ReleaseManifestEntrySchema),
+});
