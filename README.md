@@ -18,7 +18,7 @@ You'll need:
 
 Add `.github/workflows/gitpulse.yml`. Pick the trigger style that matches your cadence — both work and you can change it later:
 
-#### Option A — event-driven (recommended)
+### Option A — event-driven (recommended)
 
 Re-publishes the moment something changes: every push to your default branch, every published release, plus a manual trigger. No idle runs, fastest reflection of new content on the site.
 
@@ -27,7 +27,6 @@ name: Gitpulse
 
 on:
   push:
-    branches: [main]
   release:
     types: [published]
   workflow_dispatch:
@@ -44,7 +43,7 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-#### Option B — daily
+### Option B — daily
 
 A single scheduled run per day, plus a manual trigger. Lower CI footprint when activity is sporadic; new content lags by up to a day.
 
