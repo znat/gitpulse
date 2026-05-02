@@ -143,6 +143,44 @@ Then `yarn workspace @gitpulse/site build` to produce `site/out/` exactly as CI 
 
 ---
 
+## Releasing (maintainers)
+
+Releases are automated via [release-please](https://github.com/googleapis/release-please-action). You don't pick a version number — the bot reads conventional commit titles since the last release and computes the bump for you.
+
+### The loop
+
+1. Land PRs to `main` with **conventional commit titles**:
+   - `feat: …` → minor bump (`0.1.0` → `0.2.0`)
+   - `fix: …` → patch bump (`0.1.0` → `0.1.1`)
+   - `feat!: …` or `BREAKING CHANGE:` in the body → major bump
+   - `chore:`, `docs:`, `test:`, `refactor:`, `perf:`, `ci:`, `build:`, `style:`, `revert:` — no bump, but show up in CHANGELOG sections
+2. release-please opens (or updates) a PR titled **`chore(main): release vX.Y.Z`** containing the `package.json` bump and a `CHANGELOG.md` diff.
+3. Review the release PR. When it looks right, **merge it**.
+4. release-please then automatically:
+   - tags the merge commit `vX.Y.Z`
+   - creates a GitHub Release with the same notes
+   - moves the major-version pointer (`v1`, `v2`, …) — this is what consumers pin via `@v1`
+
+### What if a PR title isn't conventional?
+
+A separate workflow (`lint-pr-title`) runs on every PR and flags non-conventional titles as a status check. It doesn't block merge — but if you ignore it, that PR's commit doesn't show up in the next CHANGELOG.
+
+### Going from `0.x` to `1.0.0`
+
+release-please starts at `0.0.0` and bumps as `0.x.y` until you explicitly graduate. To ship `1.0.0`, add a commit on `main` whose body contains:
+
+```
+Release-As: 1.0.0
+```
+
+Next release-please run will use that exact version.
+
+### Branch protection gotcha
+
+If `main` is protected, the default `GITHUB_TOKEN` may not be allowed to push the release commit/tag. Either allow `github-actions[bot]` in protection rules, or replace the token in `.github/workflows/release-please.yml` with a Personal Access Token secret with `contents: write` permission.
+
+---
+
 ## License
 
 [AGPL-3.0-or-later](./LICENSE).
