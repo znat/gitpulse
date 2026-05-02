@@ -5,27 +5,54 @@
  */
 
 import { type StoryDay } from '@/lib/stories';
+import type { ReleasesByDay } from '@/lib/releases';
 import { PRFeedItem } from '@/components/PRFeedItem';
 import { FixesBrief } from '@/components/FixesBrief';
 import { HousekeepingDrawer } from '@/components/HousekeepingDrawer';
+import { SpecialEditionCard } from '@/components/SpecialEditionCard';
 
 interface HomepageFeedProps {
   days: StoryDay[];
+  releasesByDay?: ReleasesByDay;
 }
 
-export function HomepageFeed({ days }: HomepageFeedProps) {
-  if (days.length === 0) return <EmptyHomepage />;
+export function HomepageFeed({ days, releasesByDay = {} }: HomepageFeedProps) {
+  const hasContent = days.length > 0 || Object.keys(releasesByDay).length > 0;
+  if (!hasContent) return <EmptyHomepage />;
+
+  // Merge: every date that has either stories or releases.
+  const allDates = new Set<string>([
+    ...days.map((d) => d.date),
+    ...Object.keys(releasesByDay),
+  ]);
+  const sortedDates = Array.from(allDates).sort((a, b) => b.localeCompare(a));
+  const dayMap = new Map(days.map((d) => [d.date, d]));
 
   return (
     <div className="max-w-3xl mx-auto px-6">
-      {days.map((day) => (
-        <div key={day.date}>
-          <DayHeader dateLabel={day.dateLabel} />
-          <FeaturesSection items={day.features} />
-          <FixesBrief fixes={day.bugfixes} />
-          <HousekeepingDrawer items={day.housekeeping} />
-        </div>
-      ))}
+      {sortedDates.map((date) => {
+        const day = dayMap.get(date);
+        const dateReleases = releasesByDay[date] ?? [];
+        const dateLabel =
+          day?.dateLabel ??
+          new Intl.DateTimeFormat('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }).format(new Date(date + 'T12:00:00Z'));
+        return (
+          <div key={date}>
+            <DayHeader dateLabel={dateLabel} />
+            {dateReleases.map((release) => (
+              <SpecialEditionCard key={release.tag} release={release} />
+            ))}
+            {day && <FeaturesSection items={day.features} />}
+            {day && <FixesBrief fixes={day.bugfixes} />}
+            {day && <HousekeepingDrawer items={day.housekeeping} />}
+          </div>
+        );
+      })}
     </div>
   );
 }

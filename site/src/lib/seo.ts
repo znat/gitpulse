@@ -14,7 +14,14 @@ import {
   type Story,
   primaryCategory,
 } from './stories';
-import { storyPath, storyOgImagePath } from './urls';
+import type { Release } from './releases';
+import {
+  storyPath,
+  storyOgImagePath,
+  releasePath,
+  releaseOgImagePath,
+  releasesIndexPath,
+} from './urls';
 
 const SITE_NAME = 'Gitpulse';
 
@@ -135,4 +142,62 @@ export function buildStoryMetadata(story: Story): Metadata {
 
 export function storyPrimaryCategory(story: Story): string | null {
   return primaryCategory(story)?.key ?? null;
+}
+
+// ── Releases ─────────────────────────────────────────────
+
+export function buildReleaseMetadata(
+  release: Release,
+  repo: RepoInfo = loadRepo(),
+): Metadata {
+  const titleBase = release.name
+    ? `${release.name} (${release.tag})`
+    : release.tag;
+  const title = `${titleBase} — ${publicationName(repo)} · ${SITE_NAME}`;
+  const description = truncateDescription(
+    release.quip || `Release ${release.tag} of ${publicationName(repo)}.`,
+  );
+  const url = canonicalUrl(releasePath(release));
+  const ogImage = canonicalUrl(releaseOgImagePath(release));
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url,
+      siteName: SITE_NAME,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: titleBase }],
+      publishedTime: release.publishedAt,
+      authors: [release.authorLogin],
+    },
+    twitter: { card: 'summary_large_image', title, description },
+    alternates: { canonical: url },
+  };
+}
+
+export function buildReleasesListMetadata(
+  repo: RepoInfo = loadRepo(),
+): Metadata {
+  const title = `Releases — ${publicationName(repo)} · ${SITE_NAME}`;
+  const description = truncateDescription(
+    `Special editions for every release of ${publicationName(repo)}.`,
+  );
+  const url = canonicalUrl(releasesIndexPath());
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url,
+      siteName: SITE_NAME,
+    },
+    twitter: { card: 'summary_large_image', title, description },
+    alternates: { canonical: url },
+  };
 }
