@@ -174,24 +174,49 @@ Then `yarn workspace @gitpulse/site build` to produce `site/out/` exactly as CI 
 
 ## Releasing (maintainers)
 
-Releases are one-click via the **Actions** tab on this repo:
+Two flows: **release-please** as the everyday path, and a **manual workflow** as the hotfix escape hatch.
+
+### Default: release-please (automated)
+
+You don't pick a version number — the bot reads conventional commit titles since the last release and computes the bump for you.
+
+1. Land PRs to `main` with **conventional commit titles**:
+   - `feat: …` → minor bump (`0.1.0` → `0.2.0`)
+   - `fix: …` → patch bump (`0.1.0` → `0.1.1`)
+   - `feat!: …` or `BREAKING CHANGE:` in the body → major bump
+   - `chore:`, `docs:`, `test:`, `refactor:`, `perf:`, `ci:`, `build:`, `style:`, `revert:` — no bump, but show up in CHANGELOG sections
+2. release-please opens (or updates) a PR titled **`chore(main): release vX.Y.Z`** containing the `package.json` bump and a `CHANGELOG.md` diff.
+3. Review the release PR. When it looks right, **merge it**.
+4. release-please then automatically:
+   - tags the merge commit `vX.Y.Z`
+   - creates a GitHub Release with the same notes
+   - moves the major-version pointer (`v1`, `v2`, …) — this is what consumers pin via `@v1`
+
+A separate workflow (`lint-pr-title`) runs on every PR and flags non-conventional titles as a status check. It doesn't block merge — but if you ignore it, that PR's commit doesn't show up in the next CHANGELOG.
+
+### Going from `0.x` to `1.0.0`
+
+release-please starts at `0.0.0` and bumps as `0.x.y` until you explicitly graduate. To ship `1.0.0`, add a commit on `main` whose body contains:
+
+```
+Release-As: 1.0.0
+```
+
+Next release-please run will use that exact version.
+
+### Hotfix / out-of-band: manual workflow
+
+Sometimes you want to ship a specific version without waiting for release-please's PR — typically for hotfixes or to recover from a release-please failure.
 
 1. Open Actions → **Release** → **Run workflow**.
 2. Enter a semver version without the leading `v` (e.g. `1.0.0`, or `1.1.0-rc.1` for a pre-release).
 3. Click **Run**.
 
-The workflow:
+The manual workflow validates the version, runs `yarn typecheck` + `yarn test`, bumps `version` in root and workspace `package.json` files, commits as `release: v<version>`, creates the immutable tag + moves the major-version pointer, and creates a GitHub Release with auto-generated notes. Pre-releases (versions with a hyphen suffix) are flagged automatically.
 
-1. Validates the version string and aborts if the tag already exists.
-2. Runs `yarn typecheck` + `yarn test` — release fails on red.
-3. Bumps `version` in the root and both workspace `package.json` files in lockstep.
-4. Commits the bump as `release: v<version>` and pushes to `main`.
-5. Creates an immutable tag (`v1.0.0`) **and** moves the major-version pointer (`v1`) — the moving pointer is what consumers pin via `@v1`.
-6. Creates a real GitHub Release with auto-generated notes (commits since the last tag). Pre-releases (versions with a hyphen suffix) are flagged automatically.
+### Branch-protection gotcha (applies to both flows)
 
-After the release, znat/gitpulse's daily self-deploy will pick up the new release on its next run; the new "Special Edition" appears on the homepage feed and at `/releases/`.
-
-If your repo's `main` is protected and rejects the workflow's push, either allow the `github-actions[bot]` user in branch protection, or replace the default `GITHUB_TOKEN` in the workflow with a Personal Access Token secret with `contents: write` permission.
+If `main` is protected, the default `GITHUB_TOKEN` may not be allowed to push the release commit/tag. Either allow `github-actions[bot]` in protection rules, or replace the token in the relevant workflow file with a Personal Access Token secret with `contents: write` permission.
 
 ---
 

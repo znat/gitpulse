@@ -1,0 +1,35 @@
+name: PR title lint
+
+# Conventional-commit linter on PR titles. Status check only — does not
+# block merge. release-please reads PR titles to compute version bumps,
+# so a non-conventional title would silently produce no bump. This
+# surfaces it visibly.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to a commit SHA (Dependabot rotates it via .github/dependabot.yml).
+      - uses: amannn/action-semantic-pull-request@e32d7e603df1aa1ba07e981f2a23455dee596825  # v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            chore
+            docs
+            test
+            refactor
+            perf
+            ci
+            build
+            style
+            revert
