@@ -2,19 +2,21 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { primaryCategory, categoryDisplayName } from '@/lib/stories';
-import { loadStories, loadStory } from '@/lib/stories-loader';
+import { loadStories, loadStoryBySha } from '@/lib/stories-loader';
 import { buildStoryMetadata, canonicalUrl } from '@/lib/seo';
 import { JsonLd, buildStoryJsonLd } from '@/lib/json-ld';
 import { storySlug, storyPath, storyOgImagePath } from '@/lib/urls';
 import { SizeBars } from '@/components/SizeBars';
 
 interface RouteParams {
-  id: string;
+  sha: string;
   slug: string;
 }
 
 export function generateStaticParams(): RouteParams[] {
-  return loadStories().map((s) => ({ id: s.id, slug: storySlug(s.headline) }));
+  return loadStories()
+    .filter((s) => s.kind === 'direct-push')
+    .map((s) => ({ sha: s.sha, slug: storySlug(s.headline) }));
 }
 
 export async function generateMetadata({
@@ -22,8 +24,8 @@ export async function generateMetadata({
 }: {
   params: Promise<RouteParams>;
 }): Promise<Metadata> {
-  const { id } = await params;
-  const story = loadStory(id);
+  const { sha } = await params;
+  const story = loadStoryBySha(sha);
   if (!story) return { title: 'Not found · Gitpulse' };
   return buildStoryMetadata(story);
 }
@@ -34,23 +36,20 @@ const dateFmt = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
-export default async function StoryPage({
+export default async function CommitStoryPage({
   params,
 }: {
   params: Promise<RouteParams>;
 }) {
-  const { id } = await params;
-  const story = loadStory(id);
+  const { sha, slug } = await params;
+  const story = loadStoryBySha(sha);
   if (!story) notFound();
+  if (slug !== storySlug(story.headline)) notFound();
 
-  const sourceUrl = story.kind === 'pr' ? story.prUrl : story.commitUrl;
-  const sourceLabel =
-    story.kind === 'pr' ? `PR #${story.prNumber}` : `commit ${story.sha.slice(0, 7)}`;
+  const sourceUrl = story.commitUrl;
+  const sourceLabel = `commit ${story.sha.slice(0, 7)}`;
   const cat = primaryCategory(story);
-  const dateLabel =
-    story.kind === 'pr'
-      ? `Merged ${dateFmt.format(new Date(story.mergedAt ?? story.committedAt))}`
-      : `Pushed ${dateFmt.format(new Date(story.committedAt))}`;
+  const dateLabel = `Pushed ${dateFmt.format(new Date(story.committedAt))}`;
 
   const url = canonicalUrl(storyPath(story));
   const ogImageUrl = canonicalUrl(storyOgImagePath(story));

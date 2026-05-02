@@ -41,8 +41,8 @@ describe('getBaseUrl', () => {
 describe('canonicalUrl', () => {
   it('joins base URL and path', () => {
     process.env.GITHUB_REPOSITORY = 'znat/gitpulse';
-    expect(canonicalUrl('/stories/pr-1/foo/')).toBe(
-      'https://znat.github.io/gitpulse/stories/pr-1/foo/',
+    expect(canonicalUrl('/pull/1/foo/')).toBe(
+      'https://znat.github.io/gitpulse/pull/1/foo/',
     );
   });
 

@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { loadStories, loadStory } from '@/lib/stories-loader';
+import { loadStories, loadStoryBySha } from '@/lib/stories-loader';
 import {
   primaryCategory,
   categoryDisplayName,
@@ -13,16 +13,18 @@ export const contentType = 'image/png';
 export const alt = 'gitpulse story';
 
 export function generateStaticParams() {
-  return loadStories().map((s) => ({ id: s.id, slug: storySlug(s.headline) }));
+  return loadStories()
+    .filter((s) => s.kind === 'direct-push')
+    .map((s) => ({ sha: s.sha, slug: storySlug(s.headline) }));
 }
 
 export default async function OG({
   params,
 }: {
-  params: Promise<{ id: string; slug: string }>;
+  params: Promise<{ sha: string; slug: string }>;
 }) {
-  const { id } = await params;
-  const story = loadStory(id);
+  const { sha } = await params;
+  const story = loadStoryBySha(sha);
   if (!story) {
     return new ImageResponse(
       (
@@ -47,8 +49,7 @@ export default async function OG({
   }
 
   const cat = primaryCategory(story);
-  const refLabel =
-    story.kind === 'pr' ? `PR #${story.prNumber}` : `commit ${story.sha.slice(0, 7)}`;
+  const refLabel = `commit ${story.sha.slice(0, 7)}`;
   const categoryLabel = cat ? categoryDisplayName(cat.key).toUpperCase() : 'STORY';
 
   return new ImageResponse(

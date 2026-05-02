@@ -4,27 +4,32 @@ import type { Release } from './releases';
 
 /**
  * Centralized URL builders for gitpulse routes.
- * Mirrors gitsky's lib/urls.ts pattern — keyword-rich slugs in the path.
+ * Paths mirror GitHub's URL structure: `/pull/<n>/<slug>/` and
+ * `/commit/<sha>/<slug>/`. The slug is decorative for SEO.
  */
 
 export function storySlug(headline: string): string {
   return slugify(headline);
 }
 
-/**
- * Canonical story path: `/stories/<id>/<slug>/`.
- * The id stays opaque (manifest key); the slug is decorative for SEO.
- */
+function storyBasePath(story: Story): string {
+  return story.kind === 'pr'
+    ? `/pull/${story.prNumber}`
+    : `/commit/${story.sha}`;
+}
+
 export function storyPath(story: Story): string {
   const slug = storySlug(story.headline);
-  return slug ? `/stories/${story.id}/${slug}/` : `/stories/${story.id}/`;
+  const base = storyBasePath(story);
+  return slug ? `${base}/${slug}/` : `${base}/`;
 }
 
 export function storyOgImagePath(story: Story): string {
   const slug = storySlug(story.headline);
+  const base = storyBasePath(story);
   return slug
-    ? `/stories/${story.id}/${slug}/opengraph-image.png`
-    : `/stories/${story.id}/opengraph-image.png`;
+    ? `${base}/${slug}/opengraph-image.png`
+    : `${base}/opengraph-image.png`;
 }
 
 // ── Releases ─────────────────────────────────────────────
@@ -42,14 +47,14 @@ export function releasePath(release: Release): string {
   const slug = releaseSlug(release);
   const tagSegment = encodeURIComponent(release.tag);
   return slug
-    ? `/releases/${tagSegment}/${slug}/`
-    : `/releases/${tagSegment}/`;
+    ? `/releases/tag/${tagSegment}/${slug}/`
+    : `/releases/tag/${tagSegment}/`;
 }
 
 export function releaseOgImagePath(release: Release): string {
   const slug = releaseSlug(release);
   const tagSegment = encodeURIComponent(release.tag);
   return slug
-    ? `/releases/${tagSegment}/${slug}/opengraph-image.png`
-    : `/releases/${tagSegment}/opengraph-image.png`;
+    ? `/releases/tag/${tagSegment}/${slug}/opengraph-image.png`
+    : `/releases/tag/${tagSegment}/opengraph-image.png`;
 }

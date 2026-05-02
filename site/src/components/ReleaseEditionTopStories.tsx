@@ -13,8 +13,8 @@ import { slugify } from '@/lib/utils/slugify';
 function storyHref(story: ReleaseTopStory): string {
   const slug = slugify(story.headline);
   return slug
-    ? `/stories/${story.storyId}/${slug}/`
-    : `/stories/${story.storyId}/`;
+    ? `/pull/${story.prNumber}/${slug}/`
+    : `/pull/${story.prNumber}/`;
 }
 
 export function ReleaseEditionTopStories({
