@@ -80,6 +80,20 @@ async function main() {
     : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` };
   writeJson(`${cfg.dataDir}/repo.json`, repoInfo);
 
+  // Backfill prTitle for restored PR stories that predate the field.
+  if (gh) {
+    const backfilled = await backfillPRTitles({
+      gh,
+      owner,
+      repo,
+      storiesDir: cfg.storiesDir,
+      concurrency: cfg.concurrency,
+    });
+    if (backfilled > 0) {
+      console.log(`[gitpulse] backfilled prTitle on ${backfilled} prior stories`);
+    }
+  }
+
   // Walk + filter commits.
   const allCommits = walkCommits({
     repoDir: cfg.repoDir,
@@ -477,6 +491,52 @@ function pruneRestoredReleases(cfg: RuntimeConfig): number {
     }
   }
   return pruned;
+}
+
+async function backfillPRTitles(opts: {
+  gh: GitHubClient;
+  owner: string;
+  repo: string;
+  storiesDir: string;
+  concurrency: number;
+}): Promise<number> {
+  let files: string[] = [];
+  try {
+    files = readdirSync(opts.storiesDir).filter((f) => f.endsWith('.json'));
+  } catch {
+    return 0;
+  }
+  const candidates: { path: string; story: Story }[] = [];
+  for (const f of files) {
+    const path = join(opts.storiesDir, f);
+    try {
+      const story = JSON.parse(readFileSync(path, 'utf8')) as Story;
+      if (
+        story.kind === 'pr' &&
+        typeof story.prNumber === 'number' &&
+        !story.prTitle
+      ) {
+        candidates.push({ path, story });
+      }
+    } catch {
+      // skip unparseable
+    }
+  }
+  if (candidates.length === 0) return 0;
+
+  let backfilled = 0;
+  await pMap(candidates, opts.concurrency, async ({ path, story }) => {
+    const title = await opts.gh.fetchPRTitle(
+      opts.owner,
+      opts.repo,
+      story.prNumber!,
+    );
+    if (!title) return;
+    const updated = { ...story, prTitle: title };
+    writeFileSync(path, JSON.stringify(updated, null, 2) + '\n');
+    backfilled++;
+  });
+  return backfilled;
 }
 
 main().catch((err) => {

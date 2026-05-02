@@ -18,7 +18,9 @@ import {
 } from 'next/font/google';
 import { TopBar } from '@/components/TopBar';
 import { Footer } from '@/components/Footer';
+import { PRSidePanel } from '@/components/PRSidePanel';
 import { ThemeProvider } from '@/providers/ThemeProvider';
+import { PRPanelProvider } from '@/providers/PRPanelProvider';
 import { loadRepo, publicationName } from '@/lib/repo';
 import { JsonLd, buildWebSiteJsonLd } from '@/lib/json-ld';
 import './globals.css';
@@ -171,9 +173,12 @@ export default function RootLayout({
       </head>
       <body className={fontVariables}>
         <ThemeProvider>
-          <TopBar publicationName={publicationName(repo)} />
-          {children}
-          <Footer />
+          <PRPanelProvider>
+            <TopBar publicationName={publicationName(repo)} />
+            {children}
+            <Footer />
+            <PRSidePanel />
+          </PRPanelProvider>
         </ThemeProvider>
       </body>
     </html>

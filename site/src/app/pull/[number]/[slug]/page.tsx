@@ -5,9 +5,7 @@ import { loadStories, loadStoryByPrNumber } from '@/lib/stories-loader';
 import { buildStoryMetadata, canonicalUrl } from '@/lib/seo';
 import { JsonLd, buildStoryJsonLd } from '@/lib/json-ld';
 import { storyPathSlug, storyPath, storyOgImagePath } from '@/lib/urls';
-import { PRMetaRow } from '@/components/PRMetaRow';
-import { PRSubtitle, PRMobileReference } from '@/components/PRSubtitle';
-import { PRStoryBody } from '@/components/PRStoryBody';
+import { PRArticle } from '@/components/PRArticle';
 
 interface RouteParams {
   number: string;
@@ -61,32 +59,7 @@ export default async function PullStoryPage({
       >
         ← gitpulse
       </Link>
-
-      <article className="mt-xl">
-        <PRMetaRow
-          sizeAssessment={story.sizeAssessment}
-          categories={story.categories}
-        />
-        <PRMobileReference
-          prNumber={story.prNumber}
-          prTitle={story.prTitle}
-          prUrl={story.prUrl}
-        />
-        <h1 className="headline mb-4">{story.headline}</h1>
-        <PRSubtitle
-          author={story.author}
-          authorUrl={story.authorUrl}
-          mergedAt={story.mergedAt ?? story.committedAt}
-          prNumber={story.prNumber}
-          prTitle={story.prTitle}
-          prUrl={story.prUrl}
-        />
-        <p className="standfirst font-feed-body mb-10">{story.standfirst}</p>
-        <PRStoryBody
-          story={story.story}
-          technicalDescription={story.technicalDescription || undefined}
-        />
-      </article>
+      <PRArticle story={story} variant="page" />
     </main>
   );
 }
