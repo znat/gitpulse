@@ -14,12 +14,15 @@ const TOP_STORIES_LIMIT = 5;
 
 // Pull from `allStories` only those whose `sha` was in the merge-commit
 // SHA list returned by the GitHub compare endpoint for this release pair.
+// Only include stories associated with a PR (exclude direct-push commits).
 export function matchStoriesForRelease(
   allStories: Story[],
   shaList: string[],
 ): Story[] {
   const wanted = new Set(shaList);
-  return allStories.filter((s) => wanted.has(s.sha));
+  return allStories.filter(
+    (s) => wanted.has(s.sha) && s.kind === 'pr' && (s.prNumber ?? 0) > 0,
+  );
 }
 
 // Rank stories: largest first by (additions + deletions). The LLM uses
@@ -34,9 +37,10 @@ function rankStories(stories: Story[]): Story[] {
 }
 
 export function toTopStory(story: Story): ReleaseTopStory {
+  // At this point story should always be a PR (filtered by matchStoriesForRelease)
   return {
     storyId: story.id,
-    prNumber: story.kind === 'pr' ? story.prNumber! : 0,
+    prNumber: story.kind === 'pr' && story.prNumber ? story.prNumber : 0,
     headline: story.headline,
     standfirst: story.standfirst,
     authorLogin: story.author,

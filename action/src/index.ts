@@ -1,5 +1,5 @@
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { loadConfig, type RuntimeConfig } from './config.ts';
 import { defaultBranch, walkCommits } from './git.ts';
 import {
@@ -159,9 +159,17 @@ async function processReleases(opts: {
     );
   }
 
+  // Prune stale release JSON files before regenerating the manifest.
+  const pruned = pruneRestoredReleases(cfg);
+  if (pruned > 0) {
+    console.log(`[gitpulse] pruned ${pruned} stale release JSON files`);
+  }
+
   let fetched: GitHubRelease[];
   try {
-    fetched = await gh.fetchReleases(owner, repo, cfg.releasesCap);
+    // Fetch more than releasesCap to preserve the predecessor window after filtering
+    const fetchCount = cfg.includePrereleases ? cfg.releasesCap : cfg.releasesCap + 1;
+    fetched = await gh.fetchReleases(owner, repo, fetchCount);
   } catch (err) {
     console.warn(
       `[gitpulse] release fetch failed: ${err instanceof Error ? err.message : err}`,
@@ -169,11 +177,18 @@ async function processReleases(opts: {
     return;
   }
 
+  // Apply prerelease filter before trimming to cap
   if (!cfg.includePrereleases) {
     fetched = fetched.filter((r) => !r.isPrerelease);
   }
 
-  if (fetched.length === 0) {
+  // Trim to cap after filtering, keeping one extra as predecessor for the oldest
+  const sortedByPublish = [...fetched].sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt),
+  );
+  const cappedReleases = sortedByPublish.slice(0, cfg.releasesCap);
+
+  if (cappedReleases.length === 0) {
     console.log('[gitpulse] releases: 0 fetched');
     writeReleaseManifest(
       cfg.dataDir,
@@ -193,16 +208,17 @@ async function processReleases(opts: {
   })();
 
   // Sorted newest-first; pair each with its predecessor (if any).
-  const sortedNewestFirst = [...fetched].sort((a, b) =>
-    b.publishedAt.localeCompare(a.publishedAt),
-  );
+  // Use the full sorted list to find predecessors, even if they're beyond the cap
+  const sortedNewestFirst = sortedByPublish;
 
   let processed = 0;
   let skipped = 0;
   let failed = 0;
-  for (let i = 0; i < sortedNewestFirst.length; i++) {
-    const release = sortedNewestFirst[i]!;
-    const previous = sortedNewestFirst[i + 1] ?? null;
+  for (let i = 0; i < cappedReleases.length; i++) {
+    const release = cappedReleases[i]!;
+    // Find predecessor from the full sorted list to ensure we have it even if it's beyond cap
+    const releaseIndex = sortedNewestFirst.indexOf(release);
+    const previous = sortedNewestFirst[releaseIndex + 1] ?? null;
     try {
       const result = await processOneRelease({
         cfg,
@@ -228,7 +244,7 @@ async function processReleases(opts: {
     }
   }
   console.log(
-    `[gitpulse] releases: ${fetched.length} fetched, ${processed} new/updated, ${skipped} unchanged${failed ? `, ${failed} failed` : ''}`,
+    `[gitpulse] releases: ${cappedReleases.length} fetched, ${processed} new/updated, ${skipped} unchanged${failed ? `, ${failed} failed` : ''}`,
   );
 
   // Rebuild manifest from final on-disk state.
@@ -272,13 +288,21 @@ async function processOneRelease(opts: {
   });
 
   const existingPath = `${cfg.releasesDir}/${encodeFilename(release.tagName)}.json`;
+  let skipLLM = false;
+  let edition: { quip: string; releaseStory: string } | undefined;
+
   if (existsSync(existingPath)) {
     try {
       const existing = JSON.parse(
         readFileSync(existingPath, 'utf8'),
       ) as Release;
       if (existing.inputsHash === draft.inputsHash) {
-        return 'skipped';
+        // Copy existing quip and releaseStory to skip LLM but still rewrite file
+        edition = {
+          quip: existing.quip,
+          releaseStory: existing.releaseStory,
+        };
+        skipLLM = true;
       }
     } catch {
       // fall through and regenerate
@@ -287,39 +311,50 @@ async function processOneRelease(opts: {
 
   // Generate quip + releaseStory via LLM. On failure, use the fallback so
   // the file still gets written (the analyzer doesn't bail on one release).
-  let edition: { quip: string; releaseStory: string };
-  try {
-    edition = await editor({
-      repoName: `${owner}/${repo}`,
-      repoDescription: opts.repoDescription,
-      releaseTag: release.tagName,
-      releaseName: release.name,
-      releaseNotes: release.body || null,
-      topStories: draft.topPRStories.map((s) => ({
-        headline: s.headline,
-        standfirst: s.standfirst,
-        digestSentence: s.digestSentence,
-        primaryCategoryKey: draft.meta.topStories.find(
-          (t) => t.storyId === s.id,
-        )?.primaryCategoryKey ?? 'misc',
-      })),
-      prCount: draft.meta.prCount,
-      contributorCount: draft.meta.contributorCount,
-      totalAdditions: draft.meta.totalAdditions,
-      totalDeletions: draft.meta.totalDeletions,
-      contributorLogins: Array.from(
-        new Set(matched.map((s) => s.author)),
-      ),
-    });
-  } catch (err) {
-    console.warn(
-      `[gitpulse]   release ${release.tagName} LLM failed, using fallback: ${err instanceof Error ? err.message : err}`,
-    );
+  if (!skipLLM) {
+    try {
+      edition = await editor({
+        repoName: `${owner}/${repo}`,
+        repoDescription: opts.repoDescription,
+        releaseTag: release.tagName,
+        releaseName: release.name,
+        releaseNotes: release.body || null,
+        topStories: draft.topPRStories.map((s) => ({
+          headline: s.headline,
+          standfirst: s.standfirst,
+          digestSentence: s.digestSentence,
+          primaryCategoryKey: draft.meta.topStories.find(
+            (t) => t.storyId === s.id,
+          )?.primaryCategoryKey ?? 'misc',
+        })),
+        prCount: draft.meta.prCount,
+        contributorCount: draft.meta.contributorCount,
+        totalAdditions: draft.meta.totalAdditions,
+        totalDeletions: draft.meta.totalDeletions,
+        contributorLogins: Array.from(
+          new Set(matched.map((s) => s.author)),
+        ),
+      });
+    } catch (err) {
+      console.warn(
+        `[gitpulse]   release ${release.tagName} LLM failed, using fallback: ${err instanceof Error ? err.message : err}`,
+      );
+      edition = getFallbackEdition();
+    }
+  }
+
+  // Ensure edition is assigned (defensive check, should never happen given the logic)
+  if (!edition) {
     edition = getFallbackEdition();
   }
 
   const finalRelease = assembleRelease(draft, edition);
   writeRelease(cfg.releasesDir, finalRelease);
+
+  if (skipLLM) {
+    return 'skipped';
+  }
+
   console.log(
     `  ${release.tagName} … ✓ [${matched.length} prs, ${draft.meta.contributorCount} contributors]`,
   );
@@ -404,6 +439,42 @@ function isoDaysAgo(days: number): string {
 
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+// Prune stale release JSON files that no longer meet current filters or exceed
+// the releasesCap. This is called after restoring prior releases so that the
+// subsequent manifest rebuild only includes valid, current releases.
+function pruneRestoredReleases(cfg: RuntimeConfig): number {
+  let pruned = 0;
+  let files: string[] = [];
+  try {
+    files = readdirSync(cfg.releasesDir).filter(
+      (f) => f.endsWith('.json') && f !== 'manifest.json',
+    );
+  } catch {
+    return 0;
+  }
+
+  for (const filename of files) {
+    const path = join(cfg.releasesDir, filename);
+    try {
+      const release = JSON.parse(readFileSync(path, 'utf8')) as Release;
+      // Remove if it's a prerelease but we're not including prereleases
+      if (release.isPrerelease && !cfg.includePrereleases) {
+        unlinkSync(path);
+        pruned++;
+      }
+    } catch {
+      // If we can't parse it, remove it as invalid
+      try {
+        unlinkSync(path);
+        pruned++;
+      } catch {
+        // Ignore unlink errors
+      }
+    }
+  }
+  return pruned;
 }
 
 main().catch((err) => {
