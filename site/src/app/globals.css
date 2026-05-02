@@ -212,9 +212,10 @@ a:hover {
   .size-bar-empty { background: var(--border-medium); }
 
   .avatar-sm {
-    @apply inline-flex items-center justify-center w-6 h-6 rounded-full text-[0.625rem] font-medium uppercase;
+    @apply inline-flex items-center justify-center w-5 h-5 rounded-full text-[0.5625rem] font-medium uppercase;
     background: var(--bg-tertiary);
     color: var(--text-secondary);
+    line-height: 1;
   }
 
   .code-inline {
