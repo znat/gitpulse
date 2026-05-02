@@ -38,6 +38,32 @@ export interface CommitContext {
   commitAuthor: CommitAuthor | null;
 }
 
+export interface GitHubRelease {
+  tagName: string;
+  name: string | null;
+  body: string;
+  publishedAt: string;
+  isPrerelease: boolean;
+  authorLogin: string;
+  authorUrl: string;
+  htmlUrl: string;
+}
+
+interface RestReleaseResponse {
+  tag_name: string;
+  name: string | null;
+  body: string | null;
+  published_at: string | null;
+  prerelease: boolean;
+  draft: boolean;
+  html_url: string;
+  author: { login: string; html_url: string } | null;
+}
+
+interface RestCompareResponse {
+  commits: Array<{ sha: string }>;
+}
+
 interface CommitContextResponse {
   repository: {
     object: {
@@ -119,11 +145,79 @@ interface RepoQueryResponse {
 
 export class GitHubClient {
   private gql: typeof graphql;
+  private token: string;
 
   constructor(token: string) {
+    this.token = token;
     this.gql = graphql.defaults({
       headers: { authorization: `token ${token}` },
     });
+  }
+
+  private async restJson<T>(path: string): Promise<T | null> {
+    const url = `https://api.github.com${path}`;
+    try {
+      const resp = await fetch(url, {
+        headers: {
+          authorization: `token ${this.token}`,
+          accept: 'application/vnd.github+json',
+          'x-github-api-version': '2022-11-28',
+          'user-agent': 'gitpulse-action',
+        },
+      });
+      if (!resp.ok) {
+        console.warn(`[gitpulse] REST ${path} -> ${resp.status}`);
+        return null;
+      }
+      return (await resp.json()) as T;
+    } catch (err) {
+      console.warn(
+        `[gitpulse] REST ${path} fetch failed: ${err instanceof Error ? err.message : err}`,
+      );
+      return null;
+    }
+  }
+
+  async fetchReleases(
+    owner: string,
+    repo: string,
+    limit: number,
+  ): Promise<GitHubRelease[]> {
+    if (limit <= 0) return [];
+    const perPage = Math.min(100, limit);
+    const data = await this.restJson<RestReleaseResponse[]>(
+      `/repos/${owner}/${repo}/releases?per_page=${perPage}`,
+    );
+    if (!data) return [];
+    return data
+      .filter((r) => !r.draft)
+      .filter((r) => !!r.published_at)
+      .slice(0, limit)
+      .map((r) => ({
+        tagName: r.tag_name,
+        name: r.name,
+        body: r.body ?? '',
+        publishedAt: r.published_at!,
+        isPrerelease: r.prerelease,
+        authorLogin: r.author?.login ?? 'unknown',
+        authorUrl: r.author?.html_url ?? `https://github.com/${owner}/${repo}`,
+        htmlUrl: r.html_url,
+      }));
+  }
+
+  async fetchCompareShas(
+    owner: string,
+    repo: string,
+    base: string,
+    head: string,
+  ): Promise<string[]> {
+    // basehead format: base...head — encode tags so refs containing '/' work.
+    const basehead = `${encodeURIComponent(base)}...${encodeURIComponent(head)}`;
+    const data = await this.restJson<RestCompareResponse>(
+      `/repos/${owner}/${repo}/compare/${basehead}?per_page=250`,
+    );
+    if (!data) return [];
+    return data.commits.map((c) => c.sha);
   }
 
   async fetchRepo(owner: string, repo: string): Promise<RepoInfo> {

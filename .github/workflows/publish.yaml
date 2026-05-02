@@ -27,6 +27,14 @@ on:
         description: "How many commits to analyze in parallel. Higher = faster, but watch provider rate limits."
         type: number
         default: 10
+      releases-cap:
+        description: "Max number of recent releases to process per run. Set to 0 to disable releases entirely."
+        type: number
+        default: 20
+      include-prereleases:
+        description: "Include pre-releases (with a Pre-release badge). Set false to exclude them entirely."
+        type: boolean
+        default: true
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -69,6 +77,8 @@ jobs:
           AI_TEMPERATURE: ${{ inputs.ai-temperature }}
           GITPULSE_BOOTSTRAP_DAYS: ${{ inputs.bootstrap-days }}
           GITPULSE_CONCURRENCY: ${{ inputs.concurrency }}
+          GITPULSE_RELEASES_CAP: ${{ inputs.releases-cap }}
+          GITPULSE_INCLUDE_PRERELEASES: ${{ inputs.include-prereleases }}
 
       - name: Build site
         run: yarn workspace @gitpulse/site build

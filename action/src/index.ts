@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { loadConfig, type RuntimeConfig } from './config.ts';
 import { defaultBranch, walkCommits } from './git.ts';
@@ -9,20 +9,36 @@ import {
 } from './commit-context.ts';
 import { createSummarizer, postProcessOutput } from './llm.ts';
 import { buildStoryFromCommit, writeStory } from './render.ts';
-import { GitHubClient, parseRepoFullName, type RepoInfo } from './github.ts';
+import {
+  GitHubClient,
+  parseRepoFullName,
+  type GitHubRelease,
+  type RepoInfo,
+} from './github.ts';
 import { assessPRSize } from './size.ts';
 import { pMap } from './pmap.ts';
 import {
   SiteFetcher,
   readAllStories,
+  readAllReleases,
 } from './site-fetcher.ts';
 import {
   buildManifestFromStories,
+  buildReleaseManifestFromReleases,
   buildStateFromStories,
+  SCHEMA_VERSION,
   writeManifest,
+  writeReleaseManifest,
   writeState,
 } from './state.ts';
-import type { CommitRecord } from './types.ts';
+import {
+  assembleRelease,
+  buildDraft,
+  matchStoriesForRelease,
+} from './release-builder.ts';
+import { encodeFilename, writeRelease } from './release-render.ts';
+import { createReleaseEditor, getFallbackEdition } from './release-llm.ts';
+import type { CommitRecord, Release, Story } from './types.ts';
 
 async function main() {
   const cfg = loadConfig();
@@ -109,6 +125,205 @@ async function main() {
   console.log(
     `[gitpulse] manifest: ${allStories.length} total stories, state cursor=${allStories[0]?.sha.slice(0, 7) ?? '(empty)'}`,
   );
+
+  // Releases pass.
+  if (gh && cfg.releasesCap > 0) {
+    await processReleases({ cfg, gh, fetcher, owner, repo, allStories });
+  } else if (cfg.releasesCap === 0) {
+    console.log('[gitpulse] releases: skipped (releasesCap=0)');
+  } else {
+    console.log('[gitpulse] releases: skipped (no GitHub token)');
+  }
+}
+
+async function processReleases(opts: {
+  cfg: RuntimeConfig;
+  gh: GitHubClient;
+  fetcher: SiteFetcher;
+  owner: string;
+  repo: string;
+  allStories: Story[];
+}): Promise<void> {
+  const { cfg, gh, fetcher, owner, repo, allStories } = opts;
+
+  // Restore prior releases from the deployed site so we can compare hashes.
+  const priorReleaseManifest = await fetcher.fetchReleaseManifest();
+  if (priorReleaseManifest) {
+    const { restored, failed } = await fetcher.restorePriorReleases({
+      manifest: priorReleaseManifest,
+      releasesDir: cfg.releasesDir,
+      concurrency: cfg.concurrency,
+    });
+    console.log(
+      `[gitpulse] prior release manifest: ${priorReleaseManifest.entries.length} entries, restored ${restored} (${failed} failed)`,
+    );
+  }
+
+  let fetched: GitHubRelease[];
+  try {
+    fetched = await gh.fetchReleases(owner, repo, cfg.releasesCap);
+  } catch (err) {
+    console.warn(
+      `[gitpulse] release fetch failed: ${err instanceof Error ? err.message : err}`,
+    );
+    return;
+  }
+
+  if (!cfg.includePrereleases) {
+    fetched = fetched.filter((r) => !r.isPrerelease);
+  }
+
+  if (fetched.length === 0) {
+    console.log('[gitpulse] releases: 0 fetched');
+    writeReleaseManifest(
+      cfg.dataDir,
+      buildReleaseManifestFromReleases(readAllReleases(cfg.releasesDir)),
+    );
+    return;
+  }
+
+  const editor = createReleaseEditor(cfg.ai);
+  const repoInfo = (() => {
+    const path = `${cfg.dataDir}/repo.json`;
+    try {
+      return JSON.parse(readFileSync(path, 'utf8')) as RepoInfo;
+    } catch {
+      return null;
+    }
+  })();
+
+  // Sorted newest-first; pair each with its predecessor (if any).
+  const sortedNewestFirst = [...fetched].sort((a, b) =>
+    b.publishedAt.localeCompare(a.publishedAt),
+  );
+
+  let processed = 0;
+  let skipped = 0;
+  let failed = 0;
+  for (let i = 0; i < sortedNewestFirst.length; i++) {
+    const release = sortedNewestFirst[i]!;
+    const previous = sortedNewestFirst[i + 1] ?? null;
+    try {
+      const result = await processOneRelease({
+        cfg,
+        gh,
+        owner,
+        repo,
+        repoDescription: repoInfo?.description ?? null,
+        release,
+        previous,
+        allStories,
+        editor,
+      });
+      if (result === 'skipped') {
+        skipped++;
+      } else {
+        processed++;
+      }
+    } catch (err) {
+      failed++;
+      console.warn(
+        `[gitpulse]   release ${release.tagName} failed: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+  console.log(
+    `[gitpulse] releases: ${fetched.length} fetched, ${processed} new/updated, ${skipped} unchanged${failed ? `, ${failed} failed` : ''}`,
+  );
+
+  // Rebuild manifest from final on-disk state.
+  const allReleases = readAllReleases(cfg.releasesDir);
+  writeReleaseManifest(
+    cfg.dataDir,
+    buildReleaseManifestFromReleases(allReleases),
+  );
+}
+
+async function processOneRelease(opts: {
+  cfg: RuntimeConfig;
+  gh: GitHubClient;
+  owner: string;
+  repo: string;
+  repoDescription: string | null;
+  release: GitHubRelease;
+  previous: GitHubRelease | null;
+  allStories: Story[];
+  editor: ReturnType<typeof createReleaseEditor>;
+}): Promise<'written' | 'skipped'> {
+  const { cfg, gh, owner, repo, release, previous, allStories, editor } = opts;
+
+  // Match PRs in this release window via the compare endpoint.
+  const shaList = previous
+    ? await gh.fetchCompareShas(owner, repo, previous.tagName, release.tagName)
+    : [];
+  const matched = matchStoriesForRelease(allStories, shaList);
+
+  const draft = buildDraft({
+    schemaVersion: SCHEMA_VERSION,
+    tag: release.tagName,
+    name: release.name,
+    publishedAt: release.publishedAt,
+    authorLogin: release.authorLogin,
+    authorUrl: release.authorUrl,
+    isPrerelease: release.isPrerelease,
+    releaseUrl: release.htmlUrl,
+    previousTag: previous?.tagName ?? null,
+    matchedStories: matched,
+  });
+
+  const existingPath = `${cfg.releasesDir}/${encodeFilename(release.tagName)}.json`;
+  if (existsSync(existingPath)) {
+    try {
+      const existing = JSON.parse(
+        readFileSync(existingPath, 'utf8'),
+      ) as Release;
+      if (existing.inputsHash === draft.inputsHash) {
+        return 'skipped';
+      }
+    } catch {
+      // fall through and regenerate
+    }
+  }
+
+  // Generate quip + releaseStory via LLM. On failure, use the fallback so
+  // the file still gets written (the analyzer doesn't bail on one release).
+  let edition: { quip: string; releaseStory: string };
+  try {
+    edition = await editor({
+      repoName: `${owner}/${repo}`,
+      repoDescription: opts.repoDescription,
+      releaseTag: release.tagName,
+      releaseName: release.name,
+      releaseNotes: release.body || null,
+      topStories: draft.topPRStories.map((s) => ({
+        headline: s.headline,
+        standfirst: s.standfirst,
+        digestSentence: s.digestSentence,
+        primaryCategoryKey: draft.meta.topStories.find(
+          (t) => t.storyId === s.id,
+        )?.primaryCategoryKey ?? 'misc',
+      })),
+      prCount: draft.meta.prCount,
+      contributorCount: draft.meta.contributorCount,
+      totalAdditions: draft.meta.totalAdditions,
+      totalDeletions: draft.meta.totalDeletions,
+      contributorLogins: Array.from(
+        new Set(matched.map((s) => s.author)),
+      ),
+    });
+  } catch (err) {
+    console.warn(
+      `[gitpulse]   release ${release.tagName} LLM failed, using fallback: ${err instanceof Error ? err.message : err}`,
+    );
+    edition = getFallbackEdition();
+  }
+
+  const finalRelease = assembleRelease(draft, edition);
+  writeRelease(cfg.releasesDir, finalRelease);
+  console.log(
+    `  ${release.tagName} … ✓ [${matched.length} prs, ${draft.meta.contributorCount} contributors]`,
+  );
+  return 'written';
 }
 
 interface ProcessOk {
