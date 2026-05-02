@@ -34,13 +34,24 @@ export function listReachableShas(repoDir: string, ref: string): string[] {
     const result = spawnSync(
       'git',
       ['log', ref, '--pretty=format:%H'],
-      { cwd: repoDir, encoding: 'utf8' },
+      { cwd: repoDir, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
     );
+    if (result.error) {
+      console.warn(
+        `[gitpulse] listReachableShas: git log "${ref}" failed: ${result.error.message}`,
+      );
+      return [];
+    }
     if (result.status !== 0) {
       console.warn(
         `[gitpulse] listReachableShas: git log "${ref}" exited ${result.status}: ${result.stderr?.trim() ?? ''}`,
       );
       return [];
+    }
+    if (result.stderr && result.stderr.trim()) {
+      console.warn(
+        `[gitpulse] listReachableShas: git log "${ref}" had stderr: ${result.stderr.trim()}`,
+      );
     }
     return result.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
   } catch (err) {
