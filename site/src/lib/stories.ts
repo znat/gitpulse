@@ -48,6 +48,7 @@ export interface Story {
   filesChanged: number;
   commitUrl?: string;
   prNumber?: number;
+  prTitle?: string;
   prUrl?: string;
   mergedAt?: string;
 }
