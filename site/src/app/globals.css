@@ -195,6 +195,246 @@ a:hover {
   }
 
   .standfirst {
-    @apply text-xl leading-relaxed italic border-l-4 border-accent pl-6;
+    @apply text-xl leading-relaxed italic border-l-[3px] border-feed-gold pl-6;
+  }
+
+  .meta-label {
+    font-family: var(--font-mono), monospace;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  .size-bar { @apply w-1.5 h-4 rounded-sm; }
+  .size-bar-filled { background: var(--text-primary); }
+  .size-bar-empty { background: var(--border-medium); }
+
+  .avatar-sm {
+    @apply inline-flex items-center justify-center w-6 h-6 rounded-full text-[0.625rem] font-medium uppercase;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+  }
+
+  .code-inline {
+    font-family: var(--font-mono), monospace;
+    font-size: 0.875rem;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    @apply bg-background-tertiary px-1.5 py-0.5 rounded;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   TABBED CODE BLOCK (.tcb) — ported from gitsky
+   ═══════════════════════════════════════════════════════════ */
+.tcb {
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.tcb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 32px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-medium);
+}
+
+.tcb-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tcb-lang {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.5625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.tcb-filepath {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tcb-filename {
+  color: var(--text-secondary);
+}
+
+.tcb-code-view {
+  overflow-x: auto;
+}
+
+.tcb-code-view pre {
+  margin: 0;
+  padding: 12px 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.tcb-code-line {
+  display: flex;
+  align-items: flex-start;
+  padding: 0 16px;
+  min-height: 20.8px;
+}
+
+.tcb-code-line:hover {
+  background: rgba(110, 118, 129, 0.06);
+}
+
+.tcb-line-num {
+  color: var(--text-muted);
+  opacity: 0.4;
+  text-align: right;
+  width: 36px;
+  min-width: 36px;
+  padding-right: 16px;
+  user-select: none;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.tcb-line-content {
+  white-space: pre;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Tab pills (Code / Diff) */
+.tcb-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.tcb-tab {
+  font-family: var(--font-mono), monospace;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1;
+}
+
+.tcb-tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.tcb-tab-active {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-color: var(--border-light);
+}
+
+.tcb-tab svg { width: 12px; height: 12px; opacity: 0.7; }
+.tcb-tab-active svg { opacity: 1; }
+
+/* Diff view */
+.tcb-diff-view { overflow-x: auto; }
+
+.tcb-diff-view pre {
+  margin: 0;
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  line-height: 20px;
+  tab-size: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.tcb-diff-hunk {
+  display: flex;
+  align-items: center;
+  padding: 4px 16px;
+  background: rgba(56, 139, 253, 0.06);
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  color: var(--accent-primary);
+  opacity: 0.65;
+  font-size: 12px;
+  line-height: 20px;
+  font-family: var(--font-mono), monospace;
+  user-select: none;
+}
+
+.tcb-diff-hunk:first-child { border-top: none; }
+
+.tcb-diff-line {
+  display: flex;
+  align-items: stretch;
+  line-height: 20px;
+}
+
+.tcb-diff-line:hover { filter: brightness(1.1); }
+
+.tcb-diff-gutter {
+  color: var(--text-muted);
+  opacity: 0.35;
+  font-size: 12px;
+  text-align: right;
+  width: 40px;
+  min-width: 40px;
+  padding: 0 4px;
+  user-select: none;
+  line-height: 20px;
+  border-right: 1px solid var(--border-light);
+}
+
+.tcb-diff-gutter-old { border-right: none; }
+
+.tcb-diff-sign {
+  width: 20px;
+  min-width: 20px;
+  text-align: center;
+  user-select: none;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.tcb-diff-content {
+  flex: 1;
+  min-width: 0;
+  white-space: pre;
+  padding: 0 16px 0 0;
+  line-height: 20px;
+}
+
+.tcb-diff-added { background: var(--positive-bg); }
+.tcb-diff-added .tcb-diff-sign { color: var(--positive); }
+.tcb-diff-added .tcb-diff-content { color: var(--text-secondary); }
+
+.tcb-diff-removed { background: var(--negative-bg); }
+.tcb-diff-removed .tcb-diff-sign { color: var(--negative); }
+.tcb-diff-removed .tcb-diff-content { color: var(--text-secondary); opacity: 0.8; }
+
+.tcb-diff-context .tcb-diff-sign { color: var(--text-muted); opacity: 0.25; }
+.tcb-diff-context .tcb-diff-content { color: var(--text-muted); opacity: 0.7; }

@@ -69,6 +69,7 @@ export function buildStoryFromCommit(opts: {
       ...base,
       kind: 'pr',
       prNumber: pr.number,
+      prTitle: pr.title,
       prUrl: pr.url,
       mergedAt: pr.mergedAt ?? undefined,
       commitUrl: `https://github.com/${repoFullName}/commit/${commit.sha}`,

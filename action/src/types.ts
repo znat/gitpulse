@@ -50,6 +50,7 @@ export interface Story {
   // Source metadata
   commitUrl?: string;
   prNumber?: number;
+  prTitle?: string;
   prUrl?: string;
   mergedAt?: string;
 }

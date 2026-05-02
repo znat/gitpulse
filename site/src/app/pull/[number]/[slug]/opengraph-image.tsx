@@ -13,13 +13,19 @@ export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 export const alt = 'gitpulse story';
 
+// Sentinel matching the page's stub when no stories exist yet.
+const EMPTY_STUB_NUMBER = '__no_stories_yet__';
+const EMPTY_STUB_SLUG = 'placeholder';
+
 export function generateStaticParams() {
-  return loadStories()
-    .filter((s) => s.kind === 'pr' && typeof s.prNumber === 'number')
-    .map((s) => ({
-      number: String(s.prNumber),
-      slug: storyPathSlug(s.headline),
-    }));
+  const stories = loadStories().filter((s) => s.kind === 'pr' && typeof s.prNumber === 'number');
+  if (stories.length === 0) {
+    return [{ number: EMPTY_STUB_NUMBER, slug: EMPTY_STUB_SLUG }];
+  }
+  return stories.map((s) => ({
+    number: String(s.prNumber),
+    slug: storyPathSlug(s.headline),
+  }));
 }
 
 export default async function OG({
@@ -28,6 +34,7 @@ export default async function OG({
   params: Promise<{ number: string; slug: string }>;
 }) {
   const { number, slug } = await params;
+  if (number === EMPTY_STUB_NUMBER) notFound();
   const story = loadStoryByPrNumber(Number(number));
   if (!story) notFound();
   if (slug !== storyPathSlug(story.headline)) notFound();
