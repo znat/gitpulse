@@ -186,4 +186,76 @@ describe('PRPanelProvider', () => {
     );
     expect(getByText('hi')).toBeTruthy();
   });
+
+  it('syncs with URL on back/forward navigation (popstate)', async () => {
+    vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify(FAKE_STORY), { status: 200 }),
+      );
+
+    const { result } = renderHook(() => usePRPanel(), { wrapper: wrap });
+
+    expect(result.current.isOpen).toBe(false);
+
+    // Simulate navigation to ?story=pr-22
+    window.history.replaceState(null, '', '/?story=pr-22');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+
+    await waitFor(() => {
+      expect(result.current.isOpen).toBe(true);
+    });
+    expect(result.current.currentStoryId).toBe('pr-22');
+  });
+
+  it('handles close/open race: new openPanel cancels pending close', async () => {
+    vi.useFakeTimers();
+    const story22 = { ...FAKE_STORY, id: 'pr-22', prNumber: 22 };
+    const story33 = { ...FAKE_STORY, id: 'pr-33', prNumber: 33 };
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('pr-22.json')) {
+          return Promise.resolve(
+            new Response(JSON.stringify(story22), { status: 200 }),
+          );
+        }
+        if (typeof url === 'string' && url.includes('pr-33.json')) {
+          return Promise.resolve(
+            new Response(JSON.stringify(story33), { status: 200 }),
+          );
+        }
+        return Promise.reject(new Error('Not found'));
+      });
+
+    const { result } = renderHook(() => usePRPanel(), { wrapper: wrap });
+
+    // Open panel for PR 22
+    act(() => result.current.openPanel('pr-22'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Close the panel
+    act(() => result.current.closePanel());
+    expect(result.current.isClosing).toBe(true);
+
+    // Before the close timer elapses, open panel for PR 33
+    act(() => result.current.openPanel('pr-33'));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    // Advance timers past the original close timeout (250ms)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+
+    // Panel should remain open for PR 33
+    expect(result.current.isOpen).toBe(true);
+    expect(result.current.currentStoryId).toBe('pr-33');
+    expect(result.current.isClosing).toBe(false);
+
+    vi.useRealTimers();
+  });
 });

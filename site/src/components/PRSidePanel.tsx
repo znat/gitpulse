@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { usePRPanel } from '@/providers/PRPanelProvider';
@@ -18,11 +18,79 @@ export function PRSidePanel() {
 function PanelContent() {
   const { isOpen, isClosing, isLoading, story, error, closePanel } =
     usePRPanel();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
+
   if (!isOpen) return null;
 
   const onBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) closePanel();
   };
+
+  // Focus trap and restoration
+  useEffect(() => {
+    if (!isOpen || isClosing) return;
+
+    // Save the element that triggered the panel
+    triggerElementRef.current = document.activeElement as HTMLElement;
+
+    // Move focus into the panel
+    if (closeButtonRef.current) {
+      closeButtonRef.current.focus();
+    }
+
+    // Set aria-hidden on the main content to prevent background tabbing
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      mainElement.setAttribute('aria-hidden', 'true');
+    }
+
+    // Focus trap handler
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+
+      const panel = panelRef.current;
+      if (!panel) return;
+
+      const focusableElements = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      const focusableArray = Array.from(focusableElements);
+      const firstFocusable = focusableArray[0];
+      const lastFocusable = focusableArray[focusableArray.length - 1];
+
+      if (e.shiftKey) {
+        // Shift+Tab: if on first element, wrap to last
+        if (document.activeElement === firstFocusable) {
+          e.preventDefault();
+          lastFocusable?.focus();
+        }
+      } else {
+        // Tab: if on last element, wrap to first
+        if (document.activeElement === lastFocusable) {
+          e.preventDefault();
+          firstFocusable?.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+
+      // Restore aria-hidden on cleanup
+      if (mainElement) {
+        mainElement.removeAttribute('aria-hidden');
+      }
+
+      // Restore focus to the trigger element
+      if (triggerElementRef.current && typeof triggerElementRef.current.focus === 'function') {
+        triggerElementRef.current.focus();
+      }
+    };
+  }, [isOpen, isClosing]);
 
   return (
     <>
@@ -34,6 +102,7 @@ function PanelContent() {
         aria-hidden="true"
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={story?.kind === 'direct-push' ? 'Direct push' : 'Pull request'}
@@ -43,6 +112,7 @@ function PanelContent() {
       >
         <header className="flex items-center justify-end p-3 border-b border-border-light">
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={closePanel}
             aria-label="Close panel"

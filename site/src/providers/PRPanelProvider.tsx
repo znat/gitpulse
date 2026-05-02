@@ -50,7 +50,7 @@ function removeStoryParam() {
   const url = new URL(window.location.href);
   if (!url.searchParams.has(STORY_PARAM)) return;
   url.searchParams.delete(STORY_PARAM);
-  window.history.pushState({ prPanel: false }, '', url.toString());
+  window.history.replaceState({ prPanel: false }, '', url.toString());
 }
 
 // Map a story-detail href to the story id used as the JSON filename:
@@ -88,10 +88,17 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<PRPanelState>(initialState);
   const scrollYRef = useRef(0);
   const cacheRef = useRef<Map<string, Story>>(new Map());
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
   const openPanel = useCallback((storyId: string) => {
+    // Clear any pending close timer
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
     if (
       stateRef.current.isOpen &&
       stateRef.current.currentStoryId === storyId
@@ -150,12 +157,19 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const closePanel = useCallback(() => {
+    // Clear any existing close timer
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+
     setState((prev) =>
       prev.isOpen ? { ...prev, isClosing: true } : prev,
     );
-    setTimeout(() => {
+    closeTimerRef.current = setTimeout(() => {
       setState(initialState);
       removeStoryParam();
+      closeTimerRef.current = null;
     }, CLOSE_ANIMATION_MS);
   }, []);
 
@@ -189,22 +203,28 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('keydown', handler);
   }, [state.isOpen, state.isClosing, closePanel]);
 
-  // Browser back closes the panel (when ?story= is gone from URL).
+  // Browser back/forward syncs the panel with URL.
   useEffect(() => {
     const handler = () => {
       const url = new URL(window.location.href);
-      if (
-        stateRef.current.isOpen &&
-        !stateRef.current.isClosing &&
-        !url.searchParams.has(STORY_PARAM)
-      ) {
-        setState((prev) => ({ ...prev, isClosing: true }));
-        setTimeout(() => setState(initialState), CLOSE_ANIMATION_MS);
+      const storyId = url.searchParams.get(STORY_PARAM);
+
+      if (storyId) {
+        // URL has ?story= param, open the panel
+        if (!stateRef.current.isOpen || stateRef.current.currentStoryId !== storyId) {
+          openPanel(storyId);
+        }
+      } else {
+        // URL has no ?story= param, close the panel
+        if (stateRef.current.isOpen && !stateRef.current.isClosing) {
+          setState((prev) => ({ ...prev, isClosing: true }));
+          setTimeout(() => setState(initialState), CLOSE_ANIMATION_MS);
+        }
       }
     };
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
-  }, []);
+  }, [openPanel]);
 
   // Document-level click interception for /pull/<n>/ and /commit/<sha>/ links.
   useEffect(() => {
@@ -243,6 +263,15 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
     if (!/^(pr-\d+|commit-[0-9a-f]+)$/i.test(id)) return;
     openPanel(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Cleanup close timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
   }, []);
 
   return (
