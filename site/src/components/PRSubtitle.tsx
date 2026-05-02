@@ -28,7 +28,12 @@ export function PRSubtitle({
   commitUrl,
 }: PRSubtitleProps) {
   const initials = author.slice(0, 2).toUpperCase();
-  const dateLabel = dateFmt.format(new Date(date));
+
+  // Validate date before formatting
+  const dateObj = new Date(date);
+  const dateLabel = !Number.isNaN(dateObj.getTime())
+    ? dateFmt.format(dateObj)
+    : '';
 
   const ref = renderReference({
     prNumber,

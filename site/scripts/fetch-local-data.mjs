@@ -104,9 +104,17 @@ async function backfillPRTitles() {
   if (!repo.owner || !repo.repo) return;
 
   const storiesDir = resolve(OUT_DIR, 'data/stories');
-  const files = (await import('node:fs')).readdirSync(storiesDir).filter(
-    (f) => f.startsWith('pr-') && f.endsWith('.json'),
-  );
+  const fs = await import('node:fs');
+
+  // Guard against missing or invalid storiesDir
+  if (!fs.existsSync(storiesDir) || !fs.statSync(storiesDir).isDirectory()) {
+    return;
+  }
+
+  // Filter for JSON files that match PR pattern (pr-123.json, pr_456.json, etc.)
+  const files = fs.readdirSync(storiesDir).filter((f) => {
+    return f.endsWith('.json') && /\bpr[-_]?\d+\.json$/i.test(f);
+  });
 
   let patched = 0;
   for (const f of files) {
