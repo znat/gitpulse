@@ -8,6 +8,9 @@ const nextConfig = {
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,
+  experimental: {
+    turbo: undefined,
+  },
 };
 
 module.exports = nextConfig;

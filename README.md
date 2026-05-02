@@ -27,6 +27,8 @@ name: Gitpulse
 
 on:
   push:
+    branches:
+      - main
   release:
     types: [published]
   workflow_dispatch:
