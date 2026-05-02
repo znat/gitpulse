@@ -24,7 +24,9 @@ export function defaultBranch(repoDir: string): string {
 // Enumerate every commit SHA reachable from `ref` (branch or tag), newest
 // first. Used for first-release SHA matching when there's no predecessor
 // to diff against — `git log <tag>` returns the full history up to the
-// tag. Returns [] if the ref isn't fetched locally (shallow clone).
+// tag. Returns [] only if the command fails (e.g. ref not present
+// locally). A shallow clone makes `git log` succeed but emit fewer
+// commits; the workflow uses `fetch-depth: 0` to avoid that.
 // `spawnSync` (not `execSync`) so a tag with shell metacharacters can't
 // be interpreted as a command — the GitHub API doesn't constrain that.
 export function listReachableShas(repoDir: string, ref: string): string[] {
