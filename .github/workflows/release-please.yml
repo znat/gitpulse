@@ -13,6 +13,9 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # release-please writes labels (autorelease: pending / autorelease: tagged)
+  # via the issues API, so this scope is required even though we don't use
+  # GitHub Issues directly.
   issues: write
 
 concurrency:
@@ -27,9 +30,16 @@ jobs:
       tag_name: ${{ steps.rp.outputs.tag_name }}
       major: ${{ steps.rp.outputs.major }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      # Pinned to a commit SHA (Dependabot rotates it via .github/dependabot.yml).
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071  # v4
         id: rp
         with:
+          # Note: using the default GITHUB_TOKEN means the release PR's merge
+          # commit and the created GitHub Release will NOT trigger downstream
+          # workflows that listen on `push: main` or `release: published`.
+          # Trade-off accepted for setup simplicity. To restore downstream
+          # triggering, swap this for a fine-grained PAT secret with
+          # `contents: write` + `pull-requests: write`.
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

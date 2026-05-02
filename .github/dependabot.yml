@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # Watch `uses:` lines in every workflow under .github/workflows/ and open
+  # PRs to rotate the pinned commit SHAs. Pairs with our policy of pinning
+  # third-party actions to immutable SHAs rather than mutable v* tags.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
