@@ -51,7 +51,7 @@ function PanelContent() {
             <X className="w-5 h-5" />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto px-md md:px-lg py-xl">
+        <div className="flex-1 overflow-y-auto px-6 md:px-10 lg:px-14 py-xl">
           {isLoading && <PanelSkeleton />}
           {error && !isLoading && (
             <p className="text-muted text-sm">

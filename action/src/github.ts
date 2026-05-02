@@ -205,6 +205,17 @@ export class GitHubClient {
       }));
   }
 
+  async fetchPRTitle(
+    owner: string,
+    repo: string,
+    prNumber: number,
+  ): Promise<string | null> {
+    const data = await this.restJson<{ title: string }>(
+      `/repos/${owner}/${repo}/pulls/${prNumber}`,
+    );
+    return data?.title ?? null;
+  }
+
   async fetchCompareShas(
     owner: string,
     repo: string,

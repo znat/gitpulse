@@ -8,7 +8,7 @@
  *   GITPULSE_SITE_URL=https://other.example/ yarn workspace @gitpulse/site data:fetch
  */
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 
 const SITE_URL = (process.env.GITPULSE_SITE_URL ?? 'https://znat.github.io/gitpulse/')
@@ -65,6 +65,8 @@ async function main() {
   }
   console.log(`  stories … ${storyOk}/${manifest.entries.length}`);
 
+  await backfillPRTitles();
+
   try {
     const releaseManifest = await fetchAndWrite('data/releases/manifest.json');
     const releaseResults = await Promise.allSettled(
@@ -86,6 +88,54 @@ async function main() {
       throw err;
     }
   }
+}
+
+// Patch in prTitle for any PR-kind story missing it. This compensates for
+// older deploys that predated the analyzer change (the deployed JSONs don't
+// carry prTitle, so the panel link would show only "#NN").
+async function backfillPRTitles() {
+  const repoPath = resolve(OUT_DIR, 'data/repo.json');
+  let repo;
+  try {
+    repo = JSON.parse(readFileSync(repoPath, 'utf8'));
+  } catch {
+    return;
+  }
+  if (!repo.owner || !repo.repo) return;
+
+  const storiesDir = resolve(OUT_DIR, 'data/stories');
+  const files = (await import('node:fs')).readdirSync(storiesDir).filter(
+    (f) => f.startsWith('pr-') && f.endsWith('.json'),
+  );
+
+  let patched = 0;
+  for (const f of files) {
+    const path = resolve(storiesDir, f);
+    let story;
+    try {
+      story = JSON.parse(readFileSync(path, 'utf8'));
+    } catch {
+      continue;
+    }
+    if (story.kind !== 'pr' || typeof story.prNumber !== 'number') continue;
+    if (story.prTitle) continue;
+
+    const url = `https://api.github.com/repos/${repo.owner}/${repo.repo}/pulls/${story.prNumber}`;
+    try {
+      const res = await fetch(url, {
+        headers: { accept: 'application/vnd.github+json' },
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (!data.title) continue;
+      story.prTitle = data.title;
+      writeFileSync(path, JSON.stringify(story, null, 2) + '\n');
+      patched++;
+    } catch {
+      // ignore
+    }
+  }
+  if (patched > 0) console.log(`  prTitle backfill … ${patched} stories`);
 }
 
 main().catch((err) => {

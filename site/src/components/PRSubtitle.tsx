@@ -48,27 +48,36 @@ export function PRSubtitle({
             href={authorUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-foreground-secondary hover:text-accent transition-colors"
+            className="text-sm font-medium text-foreground-secondary hover:text-accent transition-colors leading-none"
           >
             {author}
           </a>
         ) : (
-          <span className="text-sm font-medium text-foreground-secondary">
+          <span className="text-sm font-medium text-foreground-secondary leading-none">
             {author}
           </span>
         )}
       </div>
-      <span className="text-border-medium flex-shrink-0">·</span>
-      <span className="text-sm flex-shrink-0">{dateLabel}</span>
+      <Separator />
+      <span className="text-sm flex-shrink-0 leading-none">{dateLabel}</span>
       {ref && (
         <>
-          <span className="hidden sm:inline text-border-medium flex-shrink-0">
-            ·
+          <span className="hidden sm:flex">
+            <Separator />
           </span>
           {ref}
         </>
       )}
     </div>
+  );
+}
+
+function Separator() {
+  return (
+    <span
+      aria-hidden="true"
+      className="w-1 h-1 rounded-full bg-border-medium flex-shrink-0"
+    />
   );
 }
 
@@ -99,17 +108,17 @@ function renderReference(opts: {
   if (prUrl && prNumber !== undefined) {
     return (
       <a href={prUrl} target="_blank" rel="noopener noreferrer" className={baseCls}>
-        <span className="font-mono flex-shrink-0">#{prNumber}</span>
-        {prTitle && <span className="truncate">{prTitle}</span>}
-        <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-50" />
+        <span className="font-mono leading-none flex-shrink-0">#{prNumber}</span>
+        {prTitle && <span className="truncate leading-none">{prTitle}</span>}
+        <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-50" />
       </a>
     );
   }
   if (commitUrl && commitSha) {
     return (
       <a href={commitUrl} target="_blank" rel="noopener noreferrer" className={baseCls}>
-        <span className="font-mono flex-shrink-0">{commitSha.slice(0, 7)}</span>
-        <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-50" />
+        <span className="font-mono leading-none flex-shrink-0">{commitSha.slice(0, 7)}</span>
+        <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 opacity-50" />
       </a>
     );
   }
