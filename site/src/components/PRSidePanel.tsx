@@ -36,7 +36,7 @@ function PanelContent() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Pull request"
+        aria-label={story?.kind === 'direct-push' ? 'Direct push' : 'Pull request'}
         className={`pr-panel fixed right-0 top-0 bottom-0 z-[101] w-full md:w-[66vw] lg:w-[60vw] max-w-[960px] bg-background shadow-2xl flex flex-col ${
           isClosing ? 'pr-panel--closing' : ''
         }`}

@@ -56,12 +56,12 @@ describe('PRPanelProvider', () => {
 
     expect(result.current.isOpen).toBe(false);
 
-    act(() => result.current.openPanel(22));
+    act(() => result.current.openPanel('pr-22'));
 
     expect(result.current.isOpen).toBe(true);
     expect(result.current.isLoading).toBe(true);
     expect(result.current.story).toBeNull();
-    expect(window.location.search).toContain('pull=22');
+    expect(window.location.search).toContain('story=pr-22');
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -72,8 +72,8 @@ describe('PRPanelProvider', () => {
     );
   });
 
-  it('?pull=N on mount auto-opens', async () => {
-    window.history.replaceState(null, '', '/?pull=22');
+  it('?story=ID on mount auto-opens', async () => {
+    window.history.replaceState(null, '', '/?story=pr-22');
     vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(
@@ -85,7 +85,37 @@ describe('PRPanelProvider', () => {
     await waitFor(() => {
       expect(result.current.isOpen).toBe(true);
     });
-    expect(result.current.currentPrNumber).toBe(22);
+    expect(result.current.currentStoryId).toBe('pr-22');
+  });
+
+  it('opens commit stories via the same panel', async () => {
+    const commitStory = {
+      ...FAKE_STORY,
+      id: 'commit-08d7a04',
+      kind: 'direct-push' as const,
+      sha: '08d7a04e52e0deb6990d6f167457b4f851c8be80',
+      prNumber: undefined,
+      prUrl: undefined,
+      prTitle: undefined,
+      mergedAt: undefined,
+    };
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify(commitStory), { status: 200 }),
+      );
+
+    const { result } = renderHook(() => usePRPanel(), { wrapper: wrap });
+    act(() => result.current.openPanel('commit-08d7a04'));
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(result.current.story?.kind).toBe('direct-push');
+    expect(window.location.search).toContain('story=commit-08d7a04');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/data/stories/commit-08d7a04.json'),
+    );
   });
 
   it('closePanel flips isClosing and clears state after the close window', async () => {
@@ -98,7 +128,7 @@ describe('PRPanelProvider', () => {
 
     const { result } = renderHook(() => usePRPanel(), { wrapper: wrap });
 
-    act(() => result.current.openPanel(22));
+    act(() => result.current.openPanel('pr-22'));
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0);
     });
@@ -112,7 +142,7 @@ describe('PRPanelProvider', () => {
 
     expect(result.current.isOpen).toBe(false);
     expect(result.current.isClosing).toBe(false);
-    expect(window.location.search).not.toContain('pull=');
+    expect(window.location.search).not.toContain('story=');
 
     vi.useRealTimers();
   });
@@ -132,7 +162,7 @@ describe('PRPanelProvider', () => {
     const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
 
     const { result } = renderHook(() => usePRPanel(), { wrapper: wrap });
-    act(() => result.current.openPanel(22));
+    act(() => result.current.openPanel('pr-22'));
 
     expect(document.body.style.position).toBe('fixed');
     expect(document.body.style.top).toBe('-420px');

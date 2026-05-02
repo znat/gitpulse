@@ -13,25 +13,33 @@ export function PRArticle({
   variant?: PRArticleVariant;
 }) {
   const articleClass = variant === 'panel' ? 'mb-2' : 'mt-xl mb-6';
+  const date =
+    story.kind === 'pr' ? story.mergedAt ?? story.committedAt : story.committedAt;
+
   return (
     <article className={articleClass}>
       <PRMetaRow
         sizeAssessment={story.sizeAssessment}
         categories={story.categories}
+        kind={story.kind}
       />
       <PRMobileReference
         prNumber={story.prNumber}
         prTitle={story.prTitle}
         prUrl={story.prUrl}
+        commitSha={story.kind === 'direct-push' ? story.sha : undefined}
+        commitUrl={story.kind === 'direct-push' ? story.commitUrl : undefined}
       />
       <h1 className="headline mb-4">{story.headline}</h1>
       <PRSubtitle
         author={story.author}
         authorUrl={story.authorUrl}
-        mergedAt={story.mergedAt ?? story.committedAt}
+        date={date}
         prNumber={story.prNumber}
         prTitle={story.prTitle}
         prUrl={story.prUrl}
+        commitSha={story.kind === 'direct-push' ? story.sha : undefined}
+        commitUrl={story.kind === 'direct-push' ? story.commitUrl : undefined}
       />
       <p className="standfirst font-feed-body mb-10">{story.standfirst}</p>
       <PRStoryBody

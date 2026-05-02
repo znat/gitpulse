@@ -18,11 +18,11 @@ interface PRPanelState {
   isLoading: boolean;
   story: Story | null;
   error: string | null;
-  currentPrNumber: number | null;
+  currentStoryId: string | null;
 }
 
 interface PRPanelContextValue extends PRPanelState {
-  openPanel: (prNumber: number) => void;
+  openPanel: (storyId: string) => void;
   closePanel: () => void;
 }
 
@@ -32,58 +32,74 @@ const initialState: PRPanelState = {
   isLoading: false,
   story: null,
   error: null,
-  currentPrNumber: null,
+  currentStoryId: null,
 };
 
 const PRPanelContext = createContext<PRPanelContextValue | null>(null);
 
 const CLOSE_ANIMATION_MS = 250;
+const STORY_PARAM = 'story';
 
-function pushPRParam(prNumber: number) {
+function pushStoryParam(storyId: string) {
   const url = new URL(window.location.href);
-  url.searchParams.set('pull', String(prNumber));
+  url.searchParams.set(STORY_PARAM, storyId);
   window.history.pushState({ prPanel: true }, '', url.toString());
 }
 
-function removePRParam() {
+function removeStoryParam() {
   const url = new URL(window.location.href);
-  if (!url.searchParams.has('pull')) return;
-  url.searchParams.delete('pull');
+  if (!url.searchParams.has(STORY_PARAM)) return;
+  url.searchParams.delete(STORY_PARAM);
   window.history.pushState({ prPanel: false }, '', url.toString());
 }
 
-function parsePullHrefPath(href: string): number | null {
-  // Accept absolute or root-relative URLs. Match `${basePath}/pull/<n>/...`.
+// Map a story-detail href to the story id used as the JSON filename:
+//   /pull/22/<slug>/    -> "pr-22"
+//   /commit/<sha>/<slug>/ -> "commit-<short>"   (short = first 7 chars)
+export function parseStoryHrefId(href: string): string | null {
   let pathname: string;
   try {
     pathname = new URL(href, window.location.href).pathname;
   } catch {
     return null;
   }
-  const prefix = `${basePath}/pull/`;
-  if (!pathname.startsWith(prefix)) return null;
-  const rest = pathname.slice(prefix.length);
-  const m = rest.match(/^(\d+)(?:\/|$)/);
-  if (!m) return null;
-  return Number(m[1]);
+  const pullPrefix = `${basePath}/pull/`;
+  if (pathname.startsWith(pullPrefix)) {
+    const m = pathname.slice(pullPrefix.length).match(/^(\d+)(?:\/|$)/);
+    return m ? `pr-${m[1]}` : null;
+  }
+  const commitPrefix = `${basePath}/commit/`;
+  if (pathname.startsWith(commitPrefix)) {
+    const m = pathname.slice(commitPrefix.length).match(/^([0-9a-f]+)(?:\/|$)/i);
+    if (!m) return null;
+    return `commit-${m[1]!.slice(0, 7)}`;
+  }
+  return null;
+}
+
+function isOnStoryDetailPath(): boolean {
+  return (
+    window.location.pathname.startsWith(`${basePath}/pull/`) ||
+    window.location.pathname.startsWith(`${basePath}/commit/`)
+  );
 }
 
 export function PRPanelProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<PRPanelState>(initialState);
   const scrollYRef = useRef(0);
-  const cacheRef = useRef<Map<number, Story>>(new Map());
+  const cacheRef = useRef<Map<string, Story>>(new Map());
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const openPanel = useCallback((prNumber: number) => {
+  const openPanel = useCallback((storyId: string) => {
     if (
       stateRef.current.isOpen &&
-      stateRef.current.currentPrNumber === prNumber
+      stateRef.current.currentStoryId === storyId
     ) {
       return;
     }
 
-    const cached = cacheRef.current.get(prNumber);
+    const cached = cacheRef.current.get(storyId);
     if (cached) {
       setState({
         isOpen: true,
@@ -91,9 +107,9 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
         isLoading: false,
         story: cached,
         error: null,
-        currentPrNumber: prNumber,
+        currentStoryId: storyId,
       });
-      pushPRParam(prNumber);
+      pushStoryParam(storyId);
       return;
     }
 
@@ -103,26 +119,26 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
       isLoading: true,
       story: null,
       error: null,
-      currentPrNumber: prNumber,
+      currentStoryId: storyId,
     });
-    pushPRParam(prNumber);
+    pushStoryParam(storyId);
 
-    fetch(`${basePath}/data/stories/pr-${prNumber}.json`)
+    fetch(`${basePath}/data/stories/${encodeURIComponent(storyId)}.json`)
       .then((res) => {
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         return res.json() as Promise<Story>;
       })
       .then((story) => {
-        cacheRef.current.set(prNumber, story);
+        cacheRef.current.set(storyId, story);
         setState((prev) =>
-          prev.currentPrNumber === prNumber
+          prev.currentStoryId === storyId
             ? { ...prev, isLoading: false, story, error: null }
             : prev,
         );
       })
       .catch((err) => {
         setState((prev) =>
-          prev.currentPrNumber === prNumber
+          prev.currentStoryId === storyId
             ? {
                 ...prev,
                 isLoading: false,
@@ -139,7 +155,7 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
     );
     setTimeout(() => {
       setState(initialState);
-      removePRParam();
+      removeStoryParam();
     }, CLOSE_ANIMATION_MS);
   }, []);
 
@@ -173,14 +189,14 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('keydown', handler);
   }, [state.isOpen, state.isClosing, closePanel]);
 
-  // Browser back closes the panel (when ?pull= is gone from URL).
+  // Browser back closes the panel (when ?story= is gone from URL).
   useEffect(() => {
     const handler = () => {
       const url = new URL(window.location.href);
       if (
         stateRef.current.isOpen &&
         !stateRef.current.isClosing &&
-        !url.searchParams.has('pull')
+        !url.searchParams.has(STORY_PARAM)
       ) {
         setState((prev) => ({ ...prev, isClosing: true }));
         setTimeout(() => setState(initialState), CLOSE_ANIMATION_MS);
@@ -190,14 +206,14 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('popstate', handler);
   }, []);
 
-  // Document-level click interception for /pull/<n>/ links.
+  // Document-level click interception for /pull/<n>/ and /commit/<sha>/ links.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       // Let the user open in a new tab as expected.
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       if (e.button !== 0) return;
-      // Don't intercept on the full-page PR route itself.
-      if (window.location.pathname.startsWith(`${basePath}/pull/`)) return;
+      // Don't intercept on the full-page detail routes themselves.
+      if (isOnStoryDetailPath()) return;
 
       const target = e.target as HTMLElement | null;
       const anchor = target?.closest('a');
@@ -209,24 +225,23 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const prNumber = parsePullHrefPath(href);
-      if (prNumber == null) return;
+      const storyId = parseStoryHrefId(href);
+      if (!storyId) return;
 
       e.preventDefault();
-      openPanel(prNumber);
+      openPanel(storyId);
     };
     document.addEventListener('click', handler);
     return () => document.removeEventListener('click', handler);
   }, [openPanel]);
 
-  // Open from ?pull= on first mount (deep links / refresh).
+  // Open from ?story= on first mount (deep links / refresh).
   useEffect(() => {
     const url = new URL(window.location.href);
-    const param = url.searchParams.get('pull');
-    if (!param) return;
-    const n = Number(param);
-    if (!Number.isFinite(n) || n <= 0) return;
-    openPanel(n);
+    const id = url.searchParams.get(STORY_PARAM);
+    if (!id) return;
+    if (!/^(pr-\d+|commit-[0-9a-f]+)$/i.test(id)) return;
+    openPanel(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

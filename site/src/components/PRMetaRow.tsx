@@ -1,8 +1,9 @@
-import { Check, HelpCircle } from 'lucide-react';
+import { Check, GitCommitVertical, HelpCircle } from 'lucide-react';
 import {
   type CategoryEntry,
   type CategoryKey,
   type SizeAssessment,
+  type StoryKind,
   categoryDisplayName,
 } from '@/lib/stories';
 
@@ -35,15 +36,17 @@ const CATEGORY_COLORS: Record<CategoryKey, string> = {
 export function PRMetaRow({
   sizeAssessment,
   categories,
+  kind = 'pr',
 }: {
   sizeAssessment: SizeAssessment;
   categories: CategoryEntry[];
+  kind?: StoryKind;
 }) {
   const sizeInfo = SIZE_DISPLAY[sizeAssessment];
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 pb-6 border-b border-border-light">
       <div className="flex items-center justify-between sm:justify-start sm:gap-4">
-        <StatusBadge />
+        <StatusBadge kind={kind} />
         <div className="hidden sm:block w-px h-6 bg-border-light" />
         <SizeWidget sizeInfo={sizeInfo} />
       </div>
@@ -53,12 +56,28 @@ export function PRMetaRow({
   );
 }
 
-function StatusBadge() {
+function StatusBadge({ kind }: { kind: StoryKind }) {
+  if (kind === 'pr') {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm border-l-[3px] bg-[rgba(26,127,55,0.12)] border-l-positive">
+        <Check className="w-3.5 h-3.5 text-positive" />
+        <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-positive">
+          Merged
+        </span>
+      </div>
+    );
+  }
   return (
-    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm border-l-[3px] bg-[rgba(26,127,55,0.12)] border-l-positive">
-      <Check className="w-3.5 h-3.5 text-positive" />
-      <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-positive">
-        Merged
+    <div
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-sm border-l-[3px] border-l-accent-tertiary"
+      style={{
+        background:
+          'color-mix(in srgb, var(--accent-tertiary) 12%, transparent)',
+      }}
+    >
+      <GitCommitVertical className="w-3.5 h-3.5 text-accent-tertiary" />
+      <span className="font-mono text-[0.6875rem] font-medium uppercase tracking-[0.1em] text-accent-tertiary">
+        Pushed
       </span>
     </div>
   );
