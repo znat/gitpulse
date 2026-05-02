@@ -438,3 +438,35 @@ a:hover {
 
 .tcb-diff-context .tcb-diff-sign { color: var(--text-muted); opacity: 0.25; }
 .tcb-diff-context .tcb-diff-content { color: var(--text-muted); opacity: 0.7; }
+
+/* ═══════════════════════════════════════════════════════════
+   PR SIDE PANEL — slide-in / slide-out animations
+   ═══════════════════════════════════════════════════════════ */
+@keyframes pr-panel-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes pr-panel-slide-out {
+  from { transform: translateX(0); }
+  to   { transform: translateX(100%); }
+}
+@keyframes pr-panel-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pr-panel-backdrop-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.pr-panel-backdrop {
+  animation: pr-panel-backdrop-in 0.2s ease-out forwards;
+}
+.pr-panel-backdrop--closing {
+  animation: pr-panel-backdrop-out 0.18s ease-in forwards;
+}
+.pr-panel {
+  animation: pr-panel-slide-in 0.35s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+.pr-panel--closing {
+  animation: pr-panel-slide-out 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
