@@ -5,7 +5,7 @@ import { primaryCategory, categoryDisplayName } from '@/lib/stories';
 import { loadStories, loadStoryBySha } from '@/lib/stories-loader';
 import { buildStoryMetadata, canonicalUrl } from '@/lib/seo';
 import { JsonLd, buildStoryJsonLd } from '@/lib/json-ld';
-import { storySlug, storyPath, storyOgImagePath } from '@/lib/urls';
+import { storyPathSlug, storyPath, storyOgImagePath } from '@/lib/urls';
 import { SizeBars } from '@/components/SizeBars';
 
 interface RouteParams {
@@ -16,7 +16,7 @@ interface RouteParams {
 export function generateStaticParams(): RouteParams[] {
   return loadStories()
     .filter((s) => s.kind === 'direct-push')
-    .map((s) => ({ sha: s.sha, slug: storySlug(s.headline) }));
+    .map((s) => ({ sha: s.sha, slug: storyPathSlug(s.headline) }));
 }
 
 export async function generateMetadata({
@@ -44,7 +44,7 @@ export default async function CommitStoryPage({
   const { sha, slug } = await params;
   const story = loadStoryBySha(sha);
   if (!story) notFound();
-  if (slug !== storySlug(story.headline)) notFound();
+  if (slug !== storyPathSlug(story.headline)) notFound();
 
   const sourceUrl = story.commitUrl;
   const sourceLabel = `commit ${story.sha.slice(0, 7)}`;

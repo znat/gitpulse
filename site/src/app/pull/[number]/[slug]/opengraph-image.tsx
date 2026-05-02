@@ -6,7 +6,7 @@ import {
   categoryDisplayName,
   sizeLabel,
 } from '@/lib/stories';
-import { storySlug } from '@/lib/urls';
+import { storyPathSlug } from '@/lib/urls';
 
 export const dynamic = 'force-static';
 export const size = { width: 1200, height: 630 };
@@ -18,7 +18,7 @@ export function generateStaticParams() {
     .filter((s) => s.kind === 'pr' && typeof s.prNumber === 'number')
     .map((s) => ({
       number: String(s.prNumber),
-      slug: storySlug(s.headline),
+      slug: storyPathSlug(s.headline),
     }));
 }
 
@@ -30,7 +30,7 @@ export default async function OG({
   const { number, slug } = await params;
   const story = loadStoryByPrNumber(Number(number));
   if (!story) notFound();
-  if (slug !== storySlug(story.headline)) notFound();
+  if (slug !== storyPathSlug(story.headline)) notFound();
 
   const cat = primaryCategory(story);
   const refLabel =

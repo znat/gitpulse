@@ -5,7 +5,7 @@ import { primaryCategory, categoryDisplayName } from '@/lib/stories';
 import { loadStories, loadStoryByPrNumber } from '@/lib/stories-loader';
 import { buildStoryMetadata, canonicalUrl } from '@/lib/seo';
 import { JsonLd, buildStoryJsonLd } from '@/lib/json-ld';
-import { storySlug, storyPath, storyOgImagePath } from '@/lib/urls';
+import { storyPathSlug, storyPath, storyOgImagePath } from '@/lib/urls';
 import { SizeBars } from '@/components/SizeBars';
 
 interface RouteParams {
@@ -18,7 +18,7 @@ export function generateStaticParams(): RouteParams[] {
     .filter((s) => s.kind === 'pr' && typeof s.prNumber === 'number')
     .map((s) => ({
       number: String(s.prNumber),
-      slug: storySlug(s.headline),
+      slug: storyPathSlug(s.headline),
     }));
 }
 
@@ -47,7 +47,7 @@ export default async function PullStoryPage({
   const { number, slug } = await params;
   const story = loadStoryByPrNumber(Number(number));
   if (!story) notFound();
-  if (slug !== storySlug(story.headline)) notFound();
+  if (slug !== storyPathSlug(story.headline)) notFound();
 
   const sourceUrl = story.kind === 'pr' ? story.prUrl : story.commitUrl;
   const sourceLabel =

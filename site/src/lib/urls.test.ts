@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   storySlug,
+  storyPathSlug,
   storyPath,
   storyOgImagePath,
   releasePath,
@@ -53,6 +54,16 @@ describe('storySlug', () => {
   });
 });
 
+describe('storyPathSlug', () => {
+  it('returns the slugified headline', () => {
+    expect(storyPathSlug('Hello World')).toBe('hello-world');
+  });
+
+  it('returns "untitled" when the headline yields no slug', () => {
+    expect(storyPathSlug('!!! ???')).toBe('untitled');
+  });
+});
+
 describe('storyPath', () => {
   it('builds /pull/<n>/<slug>/ for PR stories', () => {
     const story = makeStory({ prNumber: 42, headline: 'Add Feature X' });
@@ -69,14 +80,14 @@ describe('storyPath', () => {
     );
   });
 
-  it('omits the slug segment when a PR headline produces no slug', () => {
+  it('falls back to "untitled" when a PR headline produces no slug', () => {
     const story = makeStory({ prNumber: 7, headline: '!!! ???' });
-    expect(storyPath(story)).toBe('/pull/7/');
+    expect(storyPath(story)).toBe('/pull/7/untitled/');
   });
 
-  it('omits the slug segment when a commit headline produces no slug', () => {
+  it('falls back to "untitled" when a commit headline produces no slug', () => {
     const story = makeCommitStory({ sha: 'deadbeef', headline: '???' });
-    expect(storyPath(story)).toBe('/commit/deadbeef/');
+    expect(storyPath(story)).toBe('/commit/deadbeef/untitled/');
   });
 });
 
@@ -98,9 +109,11 @@ describe('storyOgImagePath', () => {
     );
   });
 
-  it('appends opengraph-image.png at the bare PR path when no slug', () => {
+  it('falls back to "untitled" when the headline produces no slug', () => {
     const story = makeStory({ prNumber: 7, headline: '???' });
-    expect(storyOgImagePath(story)).toBe('/pull/7/opengraph-image.png');
+    expect(storyOgImagePath(story)).toBe(
+      '/pull/7/untitled/opengraph-image.png',
+    );
   });
 });
 

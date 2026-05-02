@@ -1,11 +1,12 @@
 import { ImageResponse } from 'next/og';
+import { notFound } from 'next/navigation';
 import { loadStories, loadStoryBySha } from '@/lib/stories-loader';
 import {
   primaryCategory,
   categoryDisplayName,
   sizeLabel,
 } from '@/lib/stories';
-import { storySlug } from '@/lib/urls';
+import { storyPathSlug } from '@/lib/urls';
 
 export const dynamic = 'force-static';
 export const size = { width: 1200, height: 630 };
@@ -15,7 +16,7 @@ export const alt = 'gitpulse story';
 export function generateStaticParams() {
   return loadStories()
     .filter((s) => s.kind === 'direct-push')
-    .map((s) => ({ sha: s.sha, slug: storySlug(s.headline) }));
+    .map((s) => ({ sha: s.sha, slug: storyPathSlug(s.headline) }));
 }
 
 export default async function OG({
@@ -23,30 +24,10 @@ export default async function OG({
 }: {
   params: Promise<{ sha: string; slug: string }>;
 }) {
-  const { sha } = await params;
+  const { sha, slug } = await params;
   const story = loadStoryBySha(sha);
-  if (!story) {
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            backgroundColor: '#0d0d0c',
-            color: '#f0ede8',
-            fontFamily: 'serif',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 48,
-          }}
-        >
-          Not found
-        </div>
-      ),
-      size,
-    );
-  }
+  if (!story) notFound();
+  if (slug !== storyPathSlug(story.headline)) notFound();
 
   const cat = primaryCategory(story);
   const refLabel = `commit ${story.sha.slice(0, 7)}`;
