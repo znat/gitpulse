@@ -16,16 +16,21 @@ You'll need:
 - A repo where GitHub Pages is enabled with **Source: GitHub Actions**
 - One repository secret: `OPENAI_API_KEY` (or the equivalent for whichever provider you choose — see below)
 
-Add `.github/workflows/gitpulse.yml`:
+Add `.github/workflows/gitpulse.yml`. Pick the trigger style that matches your cadence — both work and you can change it later:
+
+### Option A — event-driven (recommended)
+
+Re-publishes the moment something changes: every push to your default branch, every published release, plus a manual trigger. No idle runs, fastest reflection of new content on the site.
 
 ```yaml
 name: Gitpulse
 
 on:
-  schedule:
-    - cron: "0 9 * * *"   # daily at 09:00 UTC
   push:
-    branches: [main]
+    branches:
+      - main
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -40,7 +45,31 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 ```
 
-That's it. The first run bootstraps from the last 30 days of history; subsequent runs only analyze new commits since the last published deploy.
+### Option B — daily
+
+A single scheduled run per day, plus a manual trigger. Lower CI footprint when activity is sporadic; new content lags by up to a day.
+
+```yaml
+name: Gitpulse
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # daily at 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  analyze:
+    uses: znat/gitpulse/.github/workflows/publish.yaml@v1
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+Either way: the first run bootstraps from the last 30 days of history; subsequent runs only analyze new commits since the last published deploy.
 
 ### Enable Pages
 
@@ -145,9 +174,11 @@ Then `yarn workspace @gitpulse/site build` to produce `site/out/` exactly as CI 
 
 ## Releasing (maintainers)
 
-Releases are automated via [release-please](https://github.com/googleapis/release-please-action). You don't pick a version number — the bot reads conventional commit titles since the last release and computes the bump for you.
+Two flows: **release-please** as the everyday path, and a **manual workflow** as the hotfix escape hatch.
 
-### The loop
+### Default: release-please (automated)
+
+You don't pick a version number — the bot reads conventional commit titles since the last release and computes the bump for you.
 
 1. Land PRs to `main` with **conventional commit titles**:
    - `feat: …` → minor bump (`0.1.0` → `0.2.0`)
@@ -161,8 +192,6 @@ Releases are automated via [release-please](https://github.com/googleapis/releas
    - creates a GitHub Release with the same notes
    - moves the major-version pointer (`v1`, `v2`, …) — this is what consumers pin via `@v1`
 
-### What if a PR title isn't conventional?
-
 A separate workflow (`lint-pr-title`) runs on every PR and flags non-conventional titles as a status check. It doesn't block merge — but if you ignore it, that PR's commit doesn't show up in the next CHANGELOG.
 
 ### Going from `0.x` to `1.0.0`
@@ -175,9 +204,19 @@ Release-As: 1.0.0
 
 Next release-please run will use that exact version.
 
-### Branch protection gotcha
+### Hotfix / out-of-band: manual workflow
 
-If `main` is protected, the default `GITHUB_TOKEN` may not be allowed to push the release commit/tag. Either allow `github-actions[bot]` in protection rules, or replace the token in `.github/workflows/release-please.yml` with a Personal Access Token secret with `contents: write` permission.
+Sometimes you want to ship a specific version without waiting for release-please's PR — typically for hotfixes or to recover from a release-please failure.
+
+1. Open Actions → **Release** → **Run workflow**.
+2. Enter a semver version without the leading `v` (e.g. `1.0.0`, or `1.1.0-rc.1` for a pre-release).
+3. Click **Run**.
+
+The manual workflow validates the version, runs `yarn typecheck` + `yarn test`, bumps `version` in root and workspace `package.json` files, commits as `release: v<version>`, creates the immutable tag + moves the major-version pointer, and creates a GitHub Release with auto-generated notes. Pre-releases (versions with a hyphen suffix) are flagged automatically.
+
+### Branch-protection gotcha (applies to both flows)
+
+If `main` is protected, the default `GITHUB_TOKEN` may not be allowed to push the release commit/tag. Either allow `github-actions[bot]` in protection rules, or replace the token in the relevant workflow file with a Personal Access Token secret with `contents: write` permission.
 
 ---
 

@@ -6,8 +6,8 @@ name: Self-deploy
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: "0 9 * * *"
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
