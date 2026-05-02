@@ -182,6 +182,29 @@ describe('computeLineInfos', () => {
     expect(infos[4]).toMatchObject({ isDeletion: true });
     expect(infos[5]).toMatchObject({ isAddition: true });
   });
+
+  it('does not advance counters on "\\ No newline at end of file" marker', () => {
+    const lines = [
+      '@@ -1,2 +1,2 @@',
+      ' line1',
+      '-old',
+      '+new',
+      '\\ No newline at end of file',
+    ];
+    const infos = computeLineInfos(lines);
+
+    // Marker is metadata: not classified as addition/deletion/context/hunk.
+    expect(infos[4]).toMatchObject({
+      isHunkHeader: false,
+      isAddition: false,
+      isDeletion: false,
+      isContext: false,
+      oldLineNum: null,
+      newLineNum: null,
+    });
+    // The +new line before it kept its expected newLineNum without drift.
+    expect(infos[3]).toMatchObject({ isAddition: true, newLineNum: 2 });
+  });
 });
 
 describe('extractCleanCode with file headers', () => {
@@ -199,5 +222,16 @@ describe('extractCleanCode with file headers', () => {
   return 2;
   console.log("hi");
 }`);
+  });
+
+  it('omits "\\ No newline at end of file" markers', () => {
+    const diff = `@@ -1,1 +1,1 @@
+-old line
+\\ No newline at end of file
++new line
+\\ No newline at end of file`;
+    const result = extractCleanCode(diff);
+    expect(result).toBe('new line');
+    expect(result).not.toContain('No newline');
   });
 });

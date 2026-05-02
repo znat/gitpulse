@@ -9,11 +9,11 @@
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 
 const SITE_URL = (process.env.GITPULSE_SITE_URL ?? 'https://znat.github.io/gitpulse/')
   .replace(/\/?$/, '/');
-const OUT_DIR = join(process.cwd(), 'public');
+const OUT_DIR = resolve(process.cwd(), 'public');
 
 async function fetchJson(path) {
   const url = new URL(path, SITE_URL).toString();
@@ -27,7 +27,12 @@ async function fetchJson(path) {
 }
 
 function writeJson(relPath, obj) {
-  const path = join(OUT_DIR, relPath);
+  // Guard against path traversal: a manifest entry like {"id": "../../etc"}
+  // could otherwise escape OUT_DIR and overwrite arbitrary files.
+  const path = resolve(OUT_DIR, relPath);
+  if (path !== OUT_DIR && !path.startsWith(OUT_DIR + sep)) {
+    throw new Error(`Refusing to write outside output dir: ${relPath}`);
+  }
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(obj, null, 2) + '\n');
 }
@@ -48,7 +53,9 @@ async function main() {
 
   const manifest = await fetchAndWrite('data/manifest.json');
   const storyResults = await Promise.allSettled(
-    manifest.entries.map((e) => fetchAndWrite(`data/stories/${e.id}.json`)),
+    manifest.entries.map((e) =>
+      fetchAndWrite(`data/stories/${encodeURIComponent(String(e.id))}.json`),
+    ),
   );
   const storyOk = storyResults.filter((r) => r.status === 'fulfilled').length;
   const storyRejected = storyResults.filter((r) => r.status === 'rejected');

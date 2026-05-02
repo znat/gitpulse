@@ -16,10 +16,18 @@ export function computeLineInfos(lines: string[]): LineInfo[] {
   return lines.map((line) => {
     const isHunkHeader = line.startsWith('@@');
     const isFileHeader = /^(\-\-\-|\+\+\+) /.test(line);
+    // "\ No newline at end of file" is diff metadata, not content. Skip it
+    // so old/new line counters don't drift past it.
+    const isNoNewlineMarker = line.startsWith('\\ No newline at end of file');
     const isAddition = line.startsWith('+') && !isHunkHeader && !isFileHeader;
     const isDeletion = line.startsWith('-') && !isHunkHeader && !isFileHeader;
     const isContext =
-      !isHunkHeader && !isAddition && !isDeletion && !isFileHeader && line.length > 0;
+      !isHunkHeader &&
+      !isAddition &&
+      !isDeletion &&
+      !isFileHeader &&
+      !isNoNewlineMarker &&
+      line.length > 0;
 
     if (isHunkHeader) {
       const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
@@ -84,6 +92,7 @@ export function extractCleanCode(code: string): string {
   for (const line of lines) {
     if (line.startsWith('@@')) continue;
     if (/^(\-\-\-|\+\+\+) /.test(line)) continue;
+    if (line.startsWith('\\ No newline at end of file')) continue;
     if (line.startsWith('-')) continue;
     if (line.startsWith('+')) cleanLines.push(line.slice(1));
     else if (line.startsWith(' ')) cleanLines.push(line.slice(1));
