@@ -4,7 +4,8 @@ import type { Release } from './releases';
 
 /**
  * Centralized URL builders for gitpulse routes.
- * Mirrors gitsky's lib/urls.ts pattern — keyword-rich slugs in the path.
+ * Paths mirror GitHub's URL structure: `/pull/<n>/<slug>/` and
+ * `/commit/<sha>/<slug>/`. The slug is decorative for SEO.
  */
 
 export function storySlug(headline: string): string {
@@ -12,19 +13,38 @@ export function storySlug(headline: string): string {
 }
 
 /**
- * Canonical story path: `/stories/<id>/<slug>/`.
- * The id stays opaque (manifest key); the slug is decorative for SEO.
+ * Slug segment used in story paths and route params. Falls back to
+ * 'untitled' when the headline yields an empty slug so every URL has a
+ * non-empty trailing segment (and `generateStaticParams` matches the path
+ * `storyPath` produces).
  */
+export function storyPathSlug(headline: string): string {
+  return storySlug(headline) || 'untitled';
+}
+
+function storyBasePath(story: Story): string {
+  if (story.kind === 'pr') {
+    if (typeof story.prNumber !== 'number' || !Number.isFinite(story.prNumber)) {
+      throw new Error(`Story ${story.id} is kind='pr' but missing prNumber`);
+    }
+    return `/pull/${story.prNumber}`;
+  }
+  if (!story.sha) {
+    throw new Error(`Story ${story.id} is missing sha`);
+  }
+  return `/commit/${story.sha}`;
+}
+
 export function storyPath(story: Story): string {
-  const slug = storySlug(story.headline);
-  return slug ? `/stories/${story.id}/${slug}/` : `/stories/${story.id}/`;
+  const slug = storyPathSlug(story.headline);
+  const base = storyBasePath(story);
+  return `${base}/${slug}/`;
 }
 
 export function storyOgImagePath(story: Story): string {
-  const slug = storySlug(story.headline);
-  return slug
-    ? `/stories/${story.id}/${slug}/opengraph-image.png`
-    : `/stories/${story.id}/opengraph-image.png`;
+  const slug = storyPathSlug(story.headline);
+  const base = storyBasePath(story);
+  return `${base}/${slug}/opengraph-image.png`;
 }
 
 // ── Releases ─────────────────────────────────────────────
@@ -42,14 +62,14 @@ export function releasePath(release: Release): string {
   const slug = releaseSlug(release);
   const tagSegment = encodeURIComponent(release.tag);
   return slug
-    ? `/releases/${tagSegment}/${slug}/`
-    : `/releases/${tagSegment}/`;
+    ? `/releases/tag/${tagSegment}/${slug}/`
+    : `/releases/tag/${tagSegment}/`;
 }
 
 export function releaseOgImagePath(release: Release): string {
   const slug = releaseSlug(release);
   const tagSegment = encodeURIComponent(release.tag);
   return slug
-    ? `/releases/${tagSegment}/${slug}/opengraph-image.png`
-    : `/releases/${tagSegment}/opengraph-image.png`;
+    ? `/releases/tag/${tagSegment}/${slug}/opengraph-image.png`
+    : `/releases/tag/${tagSegment}/opengraph-image.png`;
 }

@@ -21,3 +21,16 @@ export function loadStories(): Story[] {
 export function loadStory(id: string): Story | null {
   return loadStories().find((s) => s.id === id) ?? null;
 }
+
+export function loadStoryByPrNumber(n: number): Story | null {
+  return (
+    loadStories().find((s) => s.kind === 'pr' && s.prNumber === n) ?? null
+  );
+}
+
+export function loadStoryBySha(sha: string): Story | null {
+  return (
+    loadStories().find((s) => s.kind === 'direct-push' && s.sha === sha) ??
+    null
+  );
+}

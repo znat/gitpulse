@@ -8,13 +8,10 @@
 
 import Link from 'next/link';
 import type { ReleaseTopStory } from '@/lib/releases';
-import { slugify } from '@/lib/utils/slugify';
+import { storyPathSlug } from '@/lib/urls';
 
 function storyHref(story: ReleaseTopStory): string {
-  const slug = slugify(story.headline);
-  return slug
-    ? `/stories/${story.storyId}/${slug}/`
-    : `/stories/${story.storyId}/`;
+  return `/pull/${story.prNumber}/${storyPathSlug(story.headline)}/`;
 }
 
 export function ReleaseEditionTopStories({

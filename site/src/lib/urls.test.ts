@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   storySlug,
+  storyPathSlug,
   storyPath,
   storyOgImagePath,
   releasePath,
@@ -15,6 +16,7 @@ function makeStory(overrides: Partial<Story> = {}): Story {
   return {
     id: 'pr-42',
     kind: 'pr',
+    prNumber: 42,
     sha: 'abc1234',
     author: 'octocat',
     committedAt: '2026-05-01T12:00:00Z',
@@ -36,36 +38,81 @@ function makeStory(overrides: Partial<Story> = {}): Story {
   };
 }
 
+function makeCommitStory(overrides: Partial<Story> = {}): Story {
+  return makeStory({
+    id: 'commit-abc1234',
+    kind: 'direct-push',
+    prNumber: undefined,
+    sha: 'abc1234567890abcdef1234567890abcdef123456',
+    ...overrides,
+  });
+}
+
 describe('storySlug', () => {
   it('returns the slugified headline', () => {
     expect(storySlug('Hello World')).toBe('hello-world');
   });
 });
 
-describe('storyPath', () => {
-  it('returns id + slug + trailing slash', () => {
-    const story = makeStory({ id: 'pr-42', headline: 'Add Feature X' });
-    expect(storyPath(story)).toBe('/stories/pr-42/add-feature-x/');
+describe('storyPathSlug', () => {
+  it('returns the slugified headline', () => {
+    expect(storyPathSlug('Hello World')).toBe('hello-world');
   });
 
-  it('omits the slug segment when headline produces no slug', () => {
-    const story = makeStory({ id: 'commit-abc', headline: '!!! ???' });
-    expect(storyPath(story)).toBe('/stories/commit-abc/');
+  it('returns "untitled" when the headline yields no slug', () => {
+    expect(storyPathSlug('!!! ???')).toBe('untitled');
+  });
+});
+
+describe('storyPath', () => {
+  it('builds /pull/<n>/<slug>/ for PR stories', () => {
+    const story = makeStory({ prNumber: 42, headline: 'Add Feature X' });
+    expect(storyPath(story)).toBe('/pull/42/add-feature-x/');
+  });
+
+  it('builds /commit/<sha>/<slug>/ for direct-push stories', () => {
+    const story = makeCommitStory({
+      sha: 'abc1234567890abcdef1234567890abcdef123456',
+      headline: 'Refactor logger',
+    });
+    expect(storyPath(story)).toBe(
+      '/commit/abc1234567890abcdef1234567890abcdef123456/refactor-logger/',
+    );
+  });
+
+  it('falls back to "untitled" when a PR headline produces no slug', () => {
+    const story = makeStory({ prNumber: 7, headline: '!!! ???' });
+    expect(storyPath(story)).toBe('/pull/7/untitled/');
+  });
+
+  it('falls back to "untitled" when a commit headline produces no slug', () => {
+    const story = makeCommitStory({ sha: 'deadbeef', headline: '???' });
+    expect(storyPath(story)).toBe('/commit/deadbeef/untitled/');
   });
 });
 
 describe('storyOgImagePath', () => {
-  it('appends opengraph-image.png at the slug path', () => {
-    const story = makeStory({ id: 'pr-42', headline: 'Add Feature X' });
+  it('appends opengraph-image.png at the PR slug path', () => {
+    const story = makeStory({ prNumber: 42, headline: 'Add Feature X' });
     expect(storyOgImagePath(story)).toBe(
-      '/stories/pr-42/add-feature-x/opengraph-image.png',
+      '/pull/42/add-feature-x/opengraph-image.png',
     );
   });
 
-  it('appends opengraph-image.png at the bare id path when no slug', () => {
-    const story = makeStory({ id: 'commit-abc', headline: '???' });
+  it('appends opengraph-image.png at the commit slug path', () => {
+    const story = makeCommitStory({
+      sha: 'abc1234567890abcdef1234567890abcdef123456',
+      headline: 'Refactor logger',
+    });
     expect(storyOgImagePath(story)).toBe(
-      '/stories/commit-abc/opengraph-image.png',
+      '/commit/abc1234567890abcdef1234567890abcdef123456/refactor-logger/opengraph-image.png',
+    );
+  });
+
+  it('falls back to "untitled" when the headline produces no slug', () => {
+    const story = makeStory({ prNumber: 7, headline: '???' });
+    expect(storyOgImagePath(story)).toBe(
+      '/pull/7/untitled/opengraph-image.png',
     );
   });
 });
@@ -118,19 +165,21 @@ describe('releaseSlug', () => {
 });
 
 describe('releasePath', () => {
-  it('builds /releases/<tag>/<slug>/ when name is set', () => {
+  it('builds /releases/tag/<tag>/<slug>/ when name is set', () => {
     const release = makeRelease({ tag: 'v1.0.0', name: 'First' });
-    expect(releasePath(release)).toBe('/releases/v1.0.0/first/');
+    expect(releasePath(release)).toBe('/releases/tag/v1.0.0/first/');
   });
 
-  it('builds /releases/<tag>/<tag-slug>/ when name is null', () => {
+  it('builds /releases/tag/<tag>/<tag-slug>/ when name is null', () => {
     const release = makeRelease({ tag: 'v1.0.0', name: null });
-    expect(releasePath(release)).toBe('/releases/v1.0.0/v1-0-0/');
+    expect(releasePath(release)).toBe('/releases/tag/v1.0.0/v1-0-0/');
   });
 
   it('encodes tags containing slashes', () => {
     const release = makeRelease({ tag: 'release/v1.0.0', name: 'First' });
-    expect(releasePath(release)).toBe('/releases/release%2Fv1.0.0/first/');
+    expect(releasePath(release)).toBe(
+      '/releases/tag/release%2Fv1.0.0/first/',
+    );
   });
 });
 
@@ -138,7 +187,7 @@ describe('releaseOgImagePath', () => {
   it('appends opengraph-image.png at the slug path', () => {
     const release = makeRelease({ tag: 'v1.0.0', name: 'First' });
     expect(releaseOgImagePath(release)).toBe(
-      '/releases/v1.0.0/first/opengraph-image.png',
+      '/releases/tag/v1.0.0/first/opengraph-image.png',
     );
   });
 });
