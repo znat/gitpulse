@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og';
 import { loadReleases, loadRelease } from '@/lib/releases-loader';
-import { releaseSlug } from '@/lib/urls';
 
 export const dynamic = 'force-static';
 export const size = { width: 1200, height: 630 };
@@ -17,18 +16,15 @@ const EMPTY_STUB_TAG = '__no_releases_yet__';
 export function generateStaticParams() {
   const releases = loadReleases();
   if (releases.length === 0) {
-    return [{ tag: EMPTY_STUB_TAG, slug: 'placeholder' }];
+    return [{ tag: EMPTY_STUB_TAG }];
   }
-  return releases.map((r) => ({
-    tag: r.tag,
-    slug: releaseSlug(r),
-  }));
+  return releases.map((r) => ({ tag: r.tag }));
 }
 
 export default async function OG({
   params,
 }: {
-  params: Promise<{ tag: string; slug: string }>;
+  params: Promise<{ tag: string }>;
 }) {
   const { tag } = await params;
   const release = tag === EMPTY_STUB_TAG ? null : loadRelease(tag);

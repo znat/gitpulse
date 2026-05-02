@@ -21,6 +21,23 @@ export function defaultBranch(repoDir: string): string {
   }
 }
 
+// Enumerate every commit SHA reachable from `ref` (branch or tag), newest
+// first. Used for first-release SHA matching when there's no predecessor
+// to diff against — `git log <tag>` returns the full history up to the
+// tag. Returns [] if the ref isn't fetched locally (shallow clone).
+export function listReachableShas(repoDir: string, ref: string): string[] {
+  try {
+    const out = execSync(`git log ${ref} --pretty=format:%H`, {
+      cwd: repoDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split('\n').map((s) => s.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 export function walkCommits(opts: {
   repoDir: string;
   branch: string;

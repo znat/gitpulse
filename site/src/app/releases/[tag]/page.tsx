@@ -1,4 +1,4 @@
-// /releases/<tag>/<slug>/ — release detail. Lifted shape from gitsky's
+// /releases/<tag>/ — release detail. Lifted shape from gitsky's
 // apps/web/app/[owner]/[repo]/releases/[tag]/page.tsx. Single-repo,
 // no DB — reads from public/data/{releases,stories}.
 
@@ -14,7 +14,7 @@ import {
   canonicalUrl,
 } from '@/lib/seo';
 import { JsonLd, buildReleaseJsonLd } from '@/lib/json-ld';
-import { releasePath, releaseSlug, releaseOgImagePath } from '@/lib/urls';
+import { releasePath, releaseOgImagePath } from '@/lib/urls';
 import { ReleaseEditionHero } from '@/components/ReleaseEditionHero';
 import { ReleaseEditionStatBar } from '@/components/ReleaseEditionStatBar';
 import { ReleaseEditionTopStories } from '@/components/ReleaseEditionTopStories';
@@ -22,7 +22,6 @@ import { ReleaseEditionChangelog } from '@/components/ReleaseEditionChangelog';
 
 interface RouteParams {
   tag: string;
-  slug: string;
 }
 
 interface PageProps {
@@ -41,34 +40,26 @@ const EMPTY_STUB_TAG = '__no_releases_yet__';
 export function generateStaticParams(): RouteParams[] {
   const releases = loadReleases();
   if (releases.length === 0) {
-    return [{ tag: EMPTY_STUB_TAG, slug: 'placeholder' }];
+    return [{ tag: EMPTY_STUB_TAG }];
   }
-  return releases.map((r) => ({
-    tag: r.tag,
-    slug: releaseSlug(r),
-  }));
+  return releases.map((r) => ({ tag: r.tag }));
 }
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
-  const { tag, slug } = await params;
+  const { tag } = await params;
   if (tag === EMPTY_STUB_TAG) return {};
   const release = loadRelease(tag);
   if (!release) return {};
-  if (slug !== releaseSlug(release)) return {};
   return buildReleaseMetadata(release);
 }
 
 export default async function ReleaseDetailPage({ params }: PageProps) {
-  const { tag, slug } = await params;
+  const { tag } = await params;
   if (tag === EMPTY_STUB_TAG) notFound();
   const release = loadRelease(tag);
   if (!release) notFound();
-  // Reject alternate slugs that decode to the same release, so /releases/
-  // <tag>/<wrong-slug>/ 404s instead of serving identical content under two
-  // canonical URLs.
-  if (slug !== releaseSlug(release)) notFound();
 
   const allStories = loadStories();
   const changelogStories = resolveChangelog(release, allStories);

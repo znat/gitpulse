@@ -142,7 +142,7 @@ describe('buildDraft', () => {
     expect(draft.meta.totalDeletions).toBe(6);
   });
 
-  it('handles a release with zero matched stories (first release)', () => {
+  it('produces zero counters when no stories are matched', () => {
     const draft = buildDraft({
       ...baseInput,
       previousTag: null,
