@@ -31,6 +31,7 @@ function parseLinesToElements(lines: string[]): ReactNode[] {
   let codeBlockFile: string | undefined;
   let codeBlockLines: string[] = [];
   let codeBlockFormat: 'bracket' | 'backtick' | null = null;
+  let openingFenceLength = 0;
 
   const flushPara = () => {
     flushParagraph(currentParagraph, elements, ctx);
@@ -48,7 +49,7 @@ function parseLinesToElements(lines: string[]): ReactNode[] {
     const bracketStart = trimmed.match(
       /^\[{1,2}codeblock(?:\s+lang="([^"]*)")?(?:\s+file="([^"]*)")?\]{1,2}$/i,
     );
-    const backtickStart = trimmed.match(/^`{3,}(\w*)(?:\s+file=(\S+))?$/);
+    const backtickStart = trimmed.match(/^(`{3,})(\w*)(?:\s+file=(\S+))?$/);
 
     if (!inCodeBlock && (bracketStart || backtickStart)) {
       flushPara();
@@ -57,10 +58,11 @@ function parseLinesToElements(lines: string[]): ReactNode[] {
       codeBlockFormat = bracketStart ? 'bracket' : 'backtick';
       codeBlockLang = bracketStart
         ? bracketStart[1] || undefined
-        : backtickStart![1] || undefined;
+        : backtickStart![2] || undefined;
       codeBlockFile = bracketStart
         ? bracketStart[2] || undefined
-        : backtickStart![2] || undefined;
+        : backtickStart![3] || undefined;
+      openingFenceLength = backtickStart ? backtickStart[1]!.length : 0;
       codeBlockLines = [];
       continue;
     }
@@ -68,7 +70,8 @@ function parseLinesToElements(lines: string[]): ReactNode[] {
     const isEndTag =
       (codeBlockFormat === 'bracket' &&
         /^\[{1,2}\/codeblock\]{1,2}$/i.test(trimmed)) ||
-      (codeBlockFormat === 'backtick' && /^`{3,}$/.test(trimmed));
+      (codeBlockFormat === 'backtick' &&
+        new RegExp(`^\\\`{${openingFenceLength},}\\s*$`).test(trimmed));
 
     if (inCodeBlock && isEndTag) {
       const code = codeBlockLines.join('\n');
@@ -85,6 +88,7 @@ function parseLinesToElements(lines: string[]): ReactNode[] {
       codeBlockLang = undefined;
       codeBlockFile = undefined;
       codeBlockLines = [];
+      openingFenceLength = 0;
       continue;
     }
 

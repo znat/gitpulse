@@ -135,4 +135,52 @@ describe('computeLineInfos', () => {
     expect(infos[4]).toMatchObject({ isDeletion: true, oldLineNum: 10 });
     expect(infos[5]).toMatchObject({ isAddition: true, newLineNum: 10 });
   });
+
+  it('does not treat Git file header lines as additions/deletions', () => {
+    const lines = [
+      '--- a/foo.js',
+      '+++ b/foo.js',
+      '@@ -1,3 +1,4 @@',
+      ' context',
+      '-removed',
+      '+added',
+    ];
+    const infos = computeLineInfos(lines);
+
+    // File header lines should not be marked as deletions/additions
+    expect(infos[0]).toMatchObject({
+      isAddition: false,
+      isDeletion: false,
+      isHunkHeader: false,
+    });
+    expect(infos[1]).toMatchObject({
+      isAddition: false,
+      isDeletion: false,
+      isHunkHeader: false,
+    });
+    // Hunk header
+    expect(infos[2]).toMatchObject({ isHunkHeader: true });
+    // Regular diff lines
+    expect(infos[3]).toMatchObject({ isContext: true });
+    expect(infos[4]).toMatchObject({ isDeletion: true });
+    expect(infos[5]).toMatchObject({ isAddition: true });
+  });
+});
+
+describe('extractCleanCode with file headers', () => {
+  it('strips Git file header lines from clean code', () => {
+    const diff = `--- a/test.js
++++ b/test.js
+@@ -1,2 +1,3 @@
+ function test() {
+-  return 1;
++  return 2;
++  console.log("hi");
+ }`;
+    const result = extractCleanCode(diff);
+    expect(result).toBe(`function test() {
+  return 2;
+  console.log("hi");
+}`);
+  });
 });

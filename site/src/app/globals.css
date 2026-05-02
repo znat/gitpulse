@@ -199,7 +199,7 @@ a:hover {
   }
 
   .meta-label {
-    font-family: var(--font-jetbrains-mono), monospace;
+    font-family: var(--font-mono), monospace;
     font-size: 0.6875rem;
     font-weight: 500;
     text-transform: uppercase;
@@ -218,7 +218,7 @@ a:hover {
   }
 
   .code-inline {
-    font-family: var(--font-jetbrains-mono), monospace;
+    font-family: var(--font-mono), monospace;
     font-size: 0.875rem;
     overflow-wrap: break-word;
     word-break: break-all;
@@ -254,7 +254,7 @@ a:hover {
 }
 
 .tcb-lang {
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-mono), monospace;
   font-size: 0.5625rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -264,7 +264,7 @@ a:hover {
 }
 
 .tcb-filepath {
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-mono), monospace;
   font-size: 0.6875rem;
   color: var(--text-muted);
   white-space: nowrap;
@@ -283,7 +283,7 @@ a:hover {
 .tcb-code-view pre {
   margin: 0;
   padding: 12px 0;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-mono), monospace;
   font-size: 13px;
   line-height: 1.6;
   tab-size: 2;
@@ -327,7 +327,7 @@ a:hover {
 }
 
 .tcb-tab {
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-mono), monospace;
   font-size: 0.625rem;
   font-weight: 500;
   letter-spacing: 0.03em;
@@ -363,7 +363,7 @@ a:hover {
 
 .tcb-diff-view pre {
   margin: 0;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-mono), monospace;
   font-size: 13px;
   line-height: 20px;
   tab-size: 2;
@@ -382,7 +382,7 @@ a:hover {
   opacity: 0.65;
   font-size: 12px;
   line-height: 20px;
-  font-family: var(--font-jetbrains-mono), monospace;
+  font-family: var(--font-mono), monospace;
   user-select: none;
 }
 

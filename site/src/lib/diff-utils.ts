@@ -15,10 +15,11 @@ export function computeLineInfos(lines: string[]): LineInfo[] {
 
   return lines.map((line) => {
     const isHunkHeader = line.startsWith('@@');
-    const isAddition = line.startsWith('+') && !isHunkHeader;
-    const isDeletion = line.startsWith('-') && !isHunkHeader;
+    const isFileHeader = /^(\-\-\-|\+\+\+) /.test(line);
+    const isAddition = line.startsWith('+') && !isHunkHeader && !isFileHeader;
+    const isDeletion = line.startsWith('-') && !isHunkHeader && !isFileHeader;
     const isContext =
-      !isHunkHeader && !isAddition && !isDeletion && line.length > 0;
+      !isHunkHeader && !isAddition && !isDeletion && !isFileHeader && line.length > 0;
 
     if (isHunkHeader) {
       const match = line.match(/@@ -(\d+),?\d* \+(\d+),?\d* @@/);
@@ -79,6 +80,7 @@ export function extractCleanCode(code: string): string {
 
   for (const line of lines) {
     if (line.startsWith('@@')) continue;
+    if (/^(\-\-\-|\+\+\+) /.test(line)) continue;
     if (line.startsWith('-')) continue;
     if (line.startsWith('+')) cleanLines.push(line.slice(1));
     else if (line.startsWith(' ')) cleanLines.push(line.slice(1));

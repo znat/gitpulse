@@ -51,6 +51,11 @@ async function main() {
     manifest.entries.map((e) => fetchAndWrite(`data/stories/${e.id}.json`)),
   );
   const storyOk = storyResults.filter((r) => r.status === 'fulfilled').length;
+  const storyRejected = storyResults.filter((r) => r.status === 'rejected');
+  if (storyRejected.length > 0) {
+    const errors = storyRejected.map((r) => r.reason?.message || String(r.reason)).join('; ');
+    throw new Error(`Failed to fetch ${storyRejected.length} story file(s): ${errors}`);
+  }
   console.log(`  stories … ${storyOk}/${manifest.entries.length}`);
 
   try {
@@ -61,6 +66,11 @@ async function main() {
       ),
     );
     const releaseOk = releaseResults.filter((r) => r.status === 'fulfilled').length;
+    const releaseRejected = releaseResults.filter((r) => r.status === 'rejected');
+    if (releaseRejected.length > 0) {
+      const errors = releaseRejected.map((r) => r.reason?.message || String(r.reason)).join('; ');
+      throw new Error(`Failed to fetch ${releaseRejected.length} release file(s): ${errors}`);
+    }
     console.log(`  releases … ${releaseOk}/${releaseManifest.entries.length}`);
   } catch (err) {
     if (err.status === 404) {
