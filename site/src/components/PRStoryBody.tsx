@@ -36,12 +36,13 @@ function TabBar({
   onChange: (t: Tab) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 mb-6 border-b border-border-light">
+    <div className="flex items-center gap-1 mb-6 border-b border-border-light" role="tablist">
       <TabButton
         isActive={active === 'story'}
         onClick={() => onChange('story')}
         icon={<BookOpen className="w-3.5 h-3.5" />}
         label="Story"
+        ariaControls="story-panel"
       />
       <TabButton
         isActive={active === 'technical'}
@@ -49,6 +50,7 @@ function TabBar({
         icon={<Terminal className="w-3.5 h-3.5" />}
         label="Technical"
         inactiveMono
+        ariaControls="technical-panel"
       />
     </div>
   );
@@ -60,12 +62,14 @@ function TabButton({
   icon,
   label,
   inactiveMono,
+  ariaControls,
 }: {
   isActive: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
   inactiveMono?: boolean;
+  ariaControls?: string;
 }) {
   const base =
     'flex items-center gap-1.5 px-3 py-2 text-xs transition-colors -mb-px border-b-2';
@@ -75,7 +79,14 @@ function TabButton({
         inactiveMono ? 'font-mono' : 'font-medium'
       }`;
   return (
-    <button type="button" onClick={onClick} className={`${base} ${state}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${base} ${state}`}
+      role="tab"
+      aria-selected={isActive}
+      aria-controls={ariaControls}
+    >
       {icon}
       {label}
     </button>
