@@ -1,11 +1,19 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { ChangesNodeOutput } from './schemas.ts';
+import { StorySchema, type ChangesNodeOutput } from './schemas.ts';
 import type { CommitRecord, Story } from './types.ts';
 import type { CommitContext } from './github.ts';
 import type { SizeAssessmentOutput } from './schemas.ts';
 
 export function writeStory(outDir: string, story: Story): string {
+  const validation = StorySchema.safeParse(story);
+  if (!validation.success) {
+    throw new Error(
+      `Story ${story.id} failed schema validation before write:\n` +
+        JSON.stringify(validation.error.issues, null, 2),
+    );
+  }
+
   const path = `${outDir}/${story.id}.json`;
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(story, null, 2) + '\n');

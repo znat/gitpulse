@@ -12,7 +12,8 @@
     "dev": "yarn workspace @gitpulse/site dev",
     "build": "yarn workspace @gitpulse/site build",
     "lint": "yarn workspaces run lint",
-    "typecheck": "yarn workspaces run typecheck"
+    "typecheck": "yarn workspaces run typecheck",
+    "test": "yarn workspaces run test"
   },
   "engines": {
     "node": ">=22.0.0"

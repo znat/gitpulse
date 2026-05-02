@@ -53,3 +53,43 @@ export const SizeAssessmentOutputSchema = z.object({
 
 export type SizeAssessment = z.infer<typeof SizeAssessmentSchema>;
 export type SizeAssessmentOutput = z.infer<typeof SizeAssessmentOutputSchema>;
+
+// Canonical shape of the JSON files written to site/public/data/stories/<id>.json.
+// The site reads these at build time — a producer/consumer schema mismatch silently
+// breaks the deploy, so we validate at write-time.
+const StoryBaseSchema = z.object({
+  id: z.string().min(1),
+  sha: z.string().min(1),
+  author: z.string().min(1),
+  authorUrl: z.string().optional(),
+  committedAt: z.string().min(1),
+  categories: z.array(CategoryEntrySchema).min(1),
+  headline: z.string().min(1),
+  standfirst: z.string(),
+  story: z.string(),
+  digestSentence: z.string(),
+  technicalDescription: z.string(),
+  imageDirection: z.string().nullable(),
+  hasFactCheckIssues: z.boolean(),
+  factCheckIssues: z.string().nullable(),
+  sizeAssessment: SizeAssessmentSchema,
+  sizeReasoning: z.string(),
+  additions: z.number().int().nonnegative(),
+  deletions: z.number().int().nonnegative(),
+  filesChanged: z.number().int().nonnegative(),
+  commitUrl: z.string().optional(),
+});
+
+export const StorySchema = z.discriminatedUnion('kind', [
+  StoryBaseSchema.extend({
+    kind: z.literal('pr'),
+    prNumber: z.number().int().positive(),
+    prUrl: z.string(),
+    mergedAt: z.string().optional(),
+  }),
+  StoryBaseSchema.extend({
+    kind: z.literal('direct-push'),
+  }),
+]);
+
+export type StorySchemaType = z.infer<typeof StorySchema>;

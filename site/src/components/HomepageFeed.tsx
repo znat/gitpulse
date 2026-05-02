@@ -59,14 +59,28 @@ function FeaturesSection({ items }: { items: StoryDay['features'] }) {
 
 function EmptyHomepage() {
   return (
-    <div className="max-w-2xl mx-auto px-6 py-16 text-center">
-      <div className="font-feed-display text-2xl text-foreground mb-4">
-        No Stories Yet
+    <div className="max-w-2xl mx-auto px-6 py-20 text-center">
+      <div className="font-feed-mono text-[0.6875rem] uppercase tracking-[0.2em] text-feed-gold mb-4">
+        First Edition
       </div>
-      <p className="font-feed-body text-foreground-secondary mb-6">
-        Merged pull requests and direct pushes will appear here as your
-        development story unfolds.
+      <h2 className="font-feed-display text-3xl text-foreground mb-4">
+        The press is warming up.
+      </h2>
+      <p className="font-feed-body text-lg text-foreground-secondary leading-[1.7] mb-8">
+        Gitpulse is reading your default branch for the first time. The next
+        scheduled run — or your next push to the main branch — will fill this
+        page with stories about merged pull requests and direct pushes.
       </p>
+      <div className="font-feed-mono text-xs text-muted">
+        New here? Check the{' '}
+        <a
+          href="https://github.com/znat/gitpulse#install"
+          className="text-feed-teal no-underline hover:underline"
+        >
+          install guide
+        </a>
+        {' '}or trigger a manual run from the Actions tab.
+      </div>
     </div>
   );
 }
