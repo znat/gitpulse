@@ -53,23 +53,10 @@ export function releasesIndexPath(): string {
   return '/releases/';
 }
 
-export function releaseSlug(release: Release): string {
-  // `||` (not `??`) so empty-string names fall back to the tag.
-  return slugify(release.name || release.tag);
-}
-
 export function releasePath(release: Release): string {
-  const slug = releaseSlug(release);
-  const tagSegment = encodeURIComponent(release.tag);
-  return slug
-    ? `/releases/tag/${tagSegment}/${slug}/`
-    : `/releases/tag/${tagSegment}/`;
+  return `/releases/${encodeURIComponent(release.tag)}/`;
 }
 
 export function releaseOgImagePath(release: Release): string {
-  const slug = releaseSlug(release);
-  const tagSegment = encodeURIComponent(release.tag);
-  return slug
-    ? `/releases/tag/${tagSegment}/${slug}/opengraph-image.png`
-    : `/releases/tag/${tagSegment}/opengraph-image.png`;
+  return `/releases/${encodeURIComponent(release.tag)}/opengraph-image.png`;
 }

@@ -1,7 +1,7 @@
 import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { loadConfig, type RuntimeConfig } from './config.ts';
-import { defaultBranch, walkCommits } from './git.ts';
+import { defaultBranch, listReachableShas, walkCommits } from './git.ts';
 import {
   fetchFileChanges,
   formatCommitAsPRContext,
@@ -268,10 +268,12 @@ async function processOneRelease(opts: {
 }): Promise<'written' | 'skipped'> {
   const { cfg, gh, owner, repo, release, previous, allStories, editor } = opts;
 
-  // Match PRs in this release window via the compare endpoint.
+  // Match PRs in this release window. With a predecessor we use the
+  // GitHub compare endpoint; for the first release we walk every commit
+  // reachable from the tag so the edition spans the full history.
   const shaList = previous
     ? await gh.fetchCompareShas(owner, repo, previous.tagName, release.tagName)
-    : [];
+    : listReachableShas(cfg.repoDir, release.tagName);
   const matched = matchStoriesForRelease(allStories, shaList);
 
   const draft = buildDraft({

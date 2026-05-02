@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import type { CommitRecord } from './types.ts';
 
 const RECORD_SEP = '\x1e';
@@ -18,6 +18,47 @@ export function defaultBranch(repoDir: string): string {
       .replace(/^origin\//, '');
   } catch {
     return 'HEAD';
+  }
+}
+
+// Enumerate every commit SHA reachable from `ref` (branch or tag), newest
+// first. Used for first-release SHA matching when there's no predecessor
+// to diff against — `git log <tag>` returns the full history up to the
+// tag. Returns [] only if the command fails (e.g. ref not present
+// locally). A shallow clone makes `git log` succeed but emit fewer
+// commits; the workflow uses `fetch-depth: 0` to avoid that.
+// `spawnSync` (not `execSync`) so a tag with shell metacharacters can't
+// be interpreted as a command — the GitHub API doesn't constrain that.
+export function listReachableShas(repoDir: string, ref: string): string[] {
+  try {
+    const result = spawnSync(
+      'git',
+      ['log', ref, '--pretty=format:%H'],
+      { cwd: repoDir, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 },
+    );
+    if (result.error) {
+      console.warn(
+        `[gitpulse] listReachableShas: git log "${ref}" failed: ${result.error.message}`,
+      );
+      return [];
+    }
+    if (result.status !== 0) {
+      console.warn(
+        `[gitpulse] listReachableShas: git log "${ref}" exited ${result.status}: ${result.stderr?.trim() ?? ''}`,
+      );
+      return [];
+    }
+    if (result.stderr && result.stderr.trim()) {
+      console.warn(
+        `[gitpulse] listReachableShas: git log "${ref}" had stderr: ${result.stderr.trim()}`,
+      );
+    }
+    return result.stdout.split('\n').map((s) => s.trim()).filter(Boolean);
+  } catch (err) {
+    console.warn(
+      `[gitpulse] listReachableShas: git log "${ref}" failed: ${err instanceof Error ? err.message : err}`,
+    );
+    return [];
   }
 }
 

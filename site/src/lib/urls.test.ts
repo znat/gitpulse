@@ -6,7 +6,6 @@ import {
   storyOgImagePath,
   releasePath,
   releaseOgImagePath,
-  releaseSlug,
   releasesIndexPath,
 } from './urls';
 import type { Story } from './stories';
@@ -146,48 +145,23 @@ describe('releasesIndexPath', () => {
   });
 });
 
-describe('releaseSlug', () => {
-  it('uses the release name when present', () => {
-    const release = makeRelease({ name: 'First Stable Release' });
-    expect(releaseSlug(release)).toBe('first-stable-release');
-  });
-
-  it('falls back to the tag when name is null', () => {
-    const release = makeRelease({ name: null, tag: 'v1.0.0' });
-    expect(releaseSlug(release)).toBe('v1-0-0');
-  });
-
-  it('falls back to the tag when name is an empty string', () => {
-    // Regression: `??` would have let '' through, yielding an empty slug.
-    const release = makeRelease({ name: '', tag: 'v1.0.0' });
-    expect(releaseSlug(release)).toBe('v1-0-0');
-  });
-});
-
 describe('releasePath', () => {
-  it('builds /releases/tag/<tag>/<slug>/ when name is set', () => {
-    const release = makeRelease({ tag: 'v1.0.0', name: 'First' });
-    expect(releasePath(release)).toBe('/releases/tag/v1.0.0/first/');
-  });
-
-  it('builds /releases/tag/<tag>/<tag-slug>/ when name is null', () => {
-    const release = makeRelease({ tag: 'v1.0.0', name: null });
-    expect(releasePath(release)).toBe('/releases/tag/v1.0.0/v1-0-0/');
+  it('builds /releases/<tag>/', () => {
+    const release = makeRelease({ tag: 'v1.0.0' });
+    expect(releasePath(release)).toBe('/releases/v1.0.0/');
   });
 
   it('encodes tags containing slashes', () => {
-    const release = makeRelease({ tag: 'release/v1.0.0', name: 'First' });
-    expect(releasePath(release)).toBe(
-      '/releases/tag/release%2Fv1.0.0/first/',
-    );
+    const release = makeRelease({ tag: 'release/v1.0.0' });
+    expect(releasePath(release)).toBe('/releases/release%2Fv1.0.0/');
   });
 });
 
 describe('releaseOgImagePath', () => {
-  it('appends opengraph-image.png at the slug path', () => {
-    const release = makeRelease({ tag: 'v1.0.0', name: 'First' });
+  it('appends opengraph-image.png at the tag path', () => {
+    const release = makeRelease({ tag: 'v1.0.0' });
     expect(releaseOgImagePath(release)).toBe(
-      '/releases/tag/v1.0.0/first/opengraph-image.png',
+      '/releases/v1.0.0/opengraph-image.png',
     );
   });
 });
