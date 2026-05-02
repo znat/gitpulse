@@ -102,6 +102,18 @@ describe('renderStoryMarkup', () => {
     expect(html).toContain('```inner```');
   });
 
+  it('handles 4-backtick fences with a STANDALONE triple-backtick line', () => {
+    // A bare ``` line inside a 4-backtick fence must not close it.
+    const html = render('````typescript\n```\nconst x = 1;\n````');
+    expect(html).toContain('class="tcb my-8"');
+    // The standalone ``` is preserved as a code line.
+    expect(html).toContain('class="tcb-line-content">```</span>');
+    // And the const line follows it inside the same block.
+    expect(html).toContain('const x = 1;');
+    // Sanity: only one .tcb container — fence wasn't split into two blocks.
+    expect(html.match(/class="tcb my-8"/g)?.length).toBe(1);
+  });
+
   it('handles [[codeblock]] / [[/codeblock]] fences', () => {
     const html = render(
       '[[codeblock lang="ts" file="x.ts"]]\nconst x = 1;\n[[/codeblock]]',
