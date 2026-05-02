@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.0](https://github.com/znat/gitpulse/compare/v0.1.0...v0.1.0) (2026-05-02)
+
+
+### Features
+
+* Open PR detail in a right-side drawer with scroll preserve ([#25](https://github.com/znat/gitpulse/issues/25)) ([0a31f0f](https://github.com/znat/gitpulse/commit/0a31f0f1e01f1278e3a83d7984e4ccb88a6459f2))
+* Redesign PR detail page (port from gitsky) ([#24](https://github.com/znat/gitpulse/issues/24)) ([32a2f7d](https://github.com/znat/gitpulse/commit/32a2f7d92761b9ac66bee0d6486d66e1dd49ce90))
+
+
+### Bug Fixes
+
+* populate first-release editions and simplify URL ([#22](https://github.com/znat/gitpulse/issues/22)) ([762cd86](https://github.com/znat/gitpulse/commit/762cd861748dd04f8a160e5d6ca40b89d2d1ea66))
+
 ## 0.1.0 (2026-05-02)
 
 
