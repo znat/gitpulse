@@ -98,8 +98,10 @@ jobs:
       - name: Build site (gitpulse build)
         run: npx -y @gitpulse/cli@0 build
         env:
-          # Defaults (unset) inherit GITHUB_REPOSITORY → basePath /<repo>/ via
-          # site/next.config.js. Override base-path: "" for root deployments.
+          # Sentinels resolved in site/next.config.js:
+          #   "auto" (default) → basePath /<repo>/ from GITHUB_REPOSITORY
+          #   "none"           → root deployment (user/org Pages, custom domain)
+          #   "/literal/path"  → custom prefix (e.g. /blog)
           GITPULSE_BASE_PATH: ${{ inputs.base-path }}
           GITPULSE_SITE_URL: ${{ inputs.site-url }}
 
