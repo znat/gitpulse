@@ -9,6 +9,9 @@
       "package-name": "gitpulse",
       "changelog-path": "CHANGELOG.md",
       "release-as": "0.1.0"
+    },
+    "cli": {
+      "package-name": "@gitpulse/cli"
     }
   }
 }

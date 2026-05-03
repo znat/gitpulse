@@ -63,3 +63,34 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -f "$MAJOR" "$TAG"
           git push origin "$MAJOR" --force
+
+  publish-cli:
+    # Publishes @gitpulse/cli to npm via Trusted Publishing (OIDC).
+    # No NPM_TOKEN secret — short-lived credential is minted at publish time
+    # from the runner's OIDC token. The trust relationship is configured once
+    # on npmjs.com under @gitpulse/cli → Settings → Publishing access:
+    #   Provider:   GitHub Actions
+    #   Owner:      znat
+    #   Repo:       gitpulse
+    #   Workflow:   release-please.yml
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # required for both Trusted Publishing and provenance
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: yarn
+          registry-url: https://registry.npmjs.org
+      # Trusted Publishing requires npm ≥ 11.5.1; Node 22 ships with npm 10.x.
+      - run: npm install -g npm@latest
+      - run: yarn install --frozen-lockfile
+      - run: yarn workspace @gitpulse/cli build
+      - working-directory: cli
+        run: npm publish --access public --provenance

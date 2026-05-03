@@ -5,7 +5,7 @@
   "description": "Editorial story feed for your repo's PRs and direct pushes.",
   "license": "AGPL-3.0-or-later",
   "workspaces": [
-    "action",
+    "cli",
     "site"
   ],
   "scripts": {

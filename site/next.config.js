@@ -1,11 +1,14 @@
 /** @type {import('next').NextConfig} */
 const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? '';
-const basePath = repo ? `/${repo}` : '';
+const fallbackBasePath = repo ? `/${repo}` : '';
+// Vercel/Netlify users set GITPULSE_BASE_PATH="" to disable the GH Pages prefix.
+const basePath = process.env.GITPULSE_BASE_PATH ?? fallbackBasePath;
+const assetPrefix = basePath ? `${basePath}/` : '';
 
 const nextConfig = {
   output: 'export',
   basePath,
-  assetPrefix: repo ? `/${repo}/` : '',
+  assetPrefix,
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,
