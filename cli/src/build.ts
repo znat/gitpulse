@@ -93,21 +93,28 @@ export async function runBuild(): Promise<void> {
     mkdirSync(sitePublicData, { recursive: true });
     cpSync(cfg.dataDir, sitePublicData, { recursive: true });
 
+    // Strip secrets before invoking yarn/next inside the freshly-cloned tree.
+    // The Next.js build only needs GITHUB_REPOSITORY (for basePath) and
+    // GITPULSE_BASE_PATH; yarn install needs nothing private. Stripping
+    // defends against a compromised gitpulse fork running postinstall / build
+    // scripts that try to exfiltrate consumer secrets.
+    const sanitizedEnv = sanitizeEnvForClonedBuild(process.env);
+    if (cfg.basePath !== undefined) {
+      sanitizedEnv.GITPULSE_BASE_PATH = cfg.basePath;
+    }
+
     console.log('[gitpulse build] yarn install');
     execFileSync('yarn', ['install', '--frozen-lockfile'], {
       cwd: tmp,
       stdio: 'inherit',
+      env: sanitizedEnv,
     });
 
     console.log('[gitpulse build] next build');
-    const buildEnv = { ...process.env };
-    if (cfg.basePath !== undefined) {
-      buildEnv.GITPULSE_BASE_PATH = cfg.basePath;
-    }
     execFileSync('yarn', ['workspace', '@gitpulse/site', 'build'], {
       cwd: tmp,
       stdio: 'inherit',
-      env: buildEnv,
+      env: sanitizedEnv,
     });
 
     if (existsSync(cfg.outDir)) {
@@ -119,4 +126,28 @@ export async function runBuild(): Promise<void> {
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+const EXPLICIT_SECRET_KEYS = new Set([
+  'OPENAI_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'GITHUB_TOKEN',
+  'NPM_TOKEN',
+  'NODE_AUTH_TOKEN',
+  'AWS_ACCESS_KEY_ID',
+  'AWS_SECRET_ACCESS_KEY',
+  'AWS_SESSION_TOKEN',
+]);
+const SECRET_NAME_PATTERN = /(?:_TOKEN|_SECRET|_PASSWORD|_API_KEY)$/i;
+
+function sanitizeEnvForClonedBuild(
+  env: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (EXPLICIT_SECRET_KEYS.has(k)) continue;
+    if (SECRET_NAME_PATTERN.test(k)) continue;
+    out[k] = v;
+  }
+  return out;
 }

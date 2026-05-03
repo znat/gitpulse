@@ -48,6 +48,14 @@ on:
         description: "Include pre-releases (with a Pre-release badge)."
         type: boolean
         default: true
+      base-path:
+        description: 'basePath override for static export. "auto" (default) = /<repo> derived from GITHUB_REPOSITORY (project Pages — the common case). "none" = root deployment (user/org Pages, custom domain). Or a literal prefix like "/blog".'
+        type: string
+        default: "auto"
+      site-url:
+        description: "Absolute public URL of the deployed site (e.g. https://my.example.com). Used for canonical/SEO links and analyzer state restore. Required when base-path is not 'auto'."
+        type: string
+        default: ""
     secrets:
       OPENAI_API_KEY:
         required: false
@@ -83,12 +91,17 @@ jobs:
           GITPULSE_CONCURRENCY: ${{ inputs.concurrency }}
           GITPULSE_RELEASES_CAP: ${{ inputs.releases-cap }}
           GITPULSE_INCLUDE_PRERELEASES: ${{ inputs.include-prereleases }}
+          GITPULSE_SITE_URL: ${{ inputs.site-url }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build site (gitpulse build)
-        # Inherits GITHUB_REPOSITORY → basePath = /<repo>/ via site/next.config.js fallback.
         run: npx -y @gitpulse/cli@0 build
+        env:
+          # Defaults (unset) inherit GITHUB_REPOSITORY → basePath /<repo>/ via
+          # site/next.config.js. Override base-path: "" for root deployments.
+          GITPULSE_BASE_PATH: ${{ inputs.base-path }}
+          GITPULSE_SITE_URL: ${{ inputs.site-url }}
 
       - uses: actions/upload-pages-artifact@v5
         with:

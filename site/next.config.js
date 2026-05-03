@@ -1,8 +1,17 @@
 /** @type {import('next').NextConfig} */
+// GITPULSE_BASE_PATH semantics:
+//   undefined / '' / 'auto'  → derive /<repo> from GITHUB_REPOSITORY (project Pages)
+//   'none'                   → '' (root deployment — user/org Pages, custom domains)
+//   anything else            → take literally (e.g. '/blog' for sub-path mounts)
 const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? '';
 const fallbackBasePath = repo ? `/${repo}` : '';
-// Vercel/Netlify users set GITPULSE_BASE_PATH="" to disable the GH Pages prefix.
-const basePath = process.env.GITPULSE_BASE_PATH ?? fallbackBasePath;
+const basePathOverride = process.env.GITPULSE_BASE_PATH;
+function resolveBasePath() {
+  if (!basePathOverride || basePathOverride === 'auto') return fallbackBasePath;
+  if (basePathOverride === 'none') return '';
+  return basePathOverride;
+}
+const basePath = resolveBasePath();
 const assetPrefix = basePath ? `${basePath}/` : '';
 
 const nextConfig = {

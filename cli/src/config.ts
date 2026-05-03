@@ -25,7 +25,10 @@ export function loadConfig(env = process.env): RuntimeConfig {
   const repoFullName = required(env, 'GITHUB_REPOSITORY');
   const apiKey = required(env, 'OPENAI_API_KEY');
   const repoDir = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE ?? process.cwd();
-  const dataDir = env.GITPULSE_DATA_DIR ?? `${repoDir}/site/public/data`;
+  // Match build.ts default so the zero-config consumer flow
+  // (analyze → build) wires together without GITPULSE_DATA_DIR.
+  // self-deploy.yml overrides this explicitly to site/public/data.
+  const dataDir = env.GITPULSE_DATA_DIR ?? `${repoDir}/.gitpulse/data`;
 
   return {
     repoDir,
@@ -38,7 +41,9 @@ export function loadConfig(env = process.env): RuntimeConfig {
     limit: env.GITPULSE_LIMIT ? Number(env.GITPULSE_LIMIT) : undefined,
     concurrency: Math.max(1, Number(env.GITPULSE_CONCURRENCY ?? 10)),
     githubToken: env.GITHUB_TOKEN || undefined,
-    siteUrl: env.GITPULSE_SITE_URL ?? autoSiteUrl(repoFullName),
+    // `||` rather than `??` so an empty-string override (common when a CI
+    // workflow always sets the env) falls back to autoSiteUrl().
+    siteUrl: env.GITPULSE_SITE_URL || autoSiteUrl(repoFullName),
     releasesCap: Math.max(0, Number(env.GITPULSE_RELEASES_CAP ?? 20)),
     includePrereleases: env.GITPULSE_INCLUDE_PRERELEASES !== 'false',
     ai: {
