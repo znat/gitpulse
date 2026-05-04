@@ -1,6 +1,6 @@
 {
   "name": "@gitpulse/cli",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "CLI for gitpulse — generate an editorial story feed for your repo's PRs and direct pushes.",
   "license": "AGPL-3.0-or-later",
   "homepage": "https://github.com/znat/gitpulse#readme",
