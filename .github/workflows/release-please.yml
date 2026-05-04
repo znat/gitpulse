@@ -26,12 +26,14 @@ jobs:
   release-please:
     runs-on: ubuntu-latest
     outputs:
-      # @gitpulse/cli is the only package release-please manages, so the bare
-      # top-level outputs from release-please-action reflect the cli release
-      # directly — no per-package "<path>--<name>" namespacing needed.
-      release_created: ${{ steps.rp.outputs.release_created }}
-      tag_name: ${{ steps.rp.outputs.tag_name }}
-      major: ${{ steps.rp.outputs.major }}
+      # @gitpulse/cli is the only package release-please manages. With no
+      # root (".") path configured, release-please-action's output shape
+      # is ambiguous in practice: it may emit bare outputs (release_created,
+      # tag_name, major), path-scoped outputs ("cli--release_created", …),
+      # or both. We coalesce both forms so dependent jobs work regardless.
+      release_created: ${{ steps.rp.outputs.release_created || steps.rp.outputs['cli--release_created'] }}
+      tag_name: ${{ steps.rp.outputs.tag_name || steps.rp.outputs['cli--tag_name'] }}
+      major: ${{ steps.rp.outputs.major || steps.rp.outputs['cli--major'] }}
     steps:
       # Pinned to a commit SHA (Dependabot rotates it via .github/dependabot.yml).
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
