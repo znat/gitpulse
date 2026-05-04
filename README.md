@@ -62,7 +62,7 @@ That's it. First run bootstraps from the last 30 days of history; subsequent run
 </details>
 
 <details>
-<summary><b>Vercel</b> — build hook (no GitHub Actions)</summary>
+<summary><b>Vercel</b> — Vercel-side build (simplest)</summary>
 
 Vercel auto-builds on every push if you connect the repo. Make gitpulse part of that build:
 
@@ -85,9 +85,84 @@ In Vercel's **Project Settings → Environment Variables**, set:
 | `OPENAI_API_KEY` | Your provider key |
 | `GITHUB_TOKEN` | A fine-grained token with `contents: read` on the repo (so the analyzer can fetch PR / release context) |
 
-The site URL and basePath are **auto-detected** from Vercel's build env (`VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL`); no need to set `GITPULSE_SITE_URL` or `GITPULSE_BASE_PATH` explicitly. Override only if you've connected a custom domain and want canonical links to point at it — set `GITPULSE_SITE_URL=https://my.example.com`.
+That's it. Vercel exposes `VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG` (used to auto-detect `GITHUB_REPOSITORY`) and `VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL` (used to auto-detect `GITPULSE_SITE_URL`); the basePath defaults to `''` because Vercel serves at root. No `GITHUB_REPOSITORY`, `GITPULSE_BASE_PATH`, or `GITPULSE_SITE_URL` to set manually. Override only if you've connected a custom domain and want canonical links to point at it — set `GITPULSE_SITE_URL=https://my.example.com`.
 
 For Vercel's auto-detection to find `next build` output, make sure the framework preset is "Next.js" and the build output is `out` (or however your `next.config.js` is configured).
+
+</details>
+
+<details>
+<summary><b>Vercel</b> — CI builds, Vercel hosts (zero env vars on Vercel)</summary>
+
+If you'd rather keep all secrets in your CI runner and have Vercel act as a pure CDN, run analyze + build in GitHub Actions and ship the prebuilt output via `vercel deploy --prebuilt`. Vercel runs no build, sees no LLM keys, and needs no env vars.
+
+```yaml
+# .github/workflows/deploy-vercel.yml
+name: Deploy to Vercel
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+
+permissions: { contents: read }
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v6
+        with: { node-version: 22 }
+
+      - name: Resolve Vercel production URL
+        id: vercel-url
+        run: |
+          set -euo pipefail
+          INFO=$(curl -fsSL -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")
+          URL=$(echo "$INFO" | jq -r '
+            ([.alias[]? | select(.target == "PRODUCTION") | .domain]
+              | sort_by(endswith(".vercel.app")) | .[0]
+            ) // (.name + ".vercel.app")')
+          echo "url=https://${URL}/" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+      - run: npx -y @gitpulse/cli@0 analyze
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
+          GITPULSE_SITE_URL: ${{ steps.vercel-url.outputs.url }}
+
+      - run: npx -y @gitpulse/cli@0 build
+        env:
+          GITPULSE_BASE_PATH: none
+          GITPULSE_SITE_URL:  ${{ steps.vercel-url.outputs.url }}
+
+      - name: Stage for Vercel prebuilt deploy
+        run: |
+          mkdir -p .vercel/output/static
+          cp -RT .gitpulse/out .vercel/output/static
+          echo '{"version":3}' > .vercel/output/config.json
+
+      - run: |
+          npm install -g vercel@latest
+          vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN:      ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID:     ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+```
+
+**One-time setup:**
+1. Create a Vercel project (any framework — it doesn't matter; Vercel won't build).
+2. From your local checkout: `vercel link` to bind it. Copy `orgId` and `projectId` out of `.vercel/project.json` into repo secrets `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
+3. Generate a Vercel token at https://vercel.com/account/tokens, store as `VERCEL_TOKEN` repo secret.
+4. Push to `main` → first deploy seeds the project. Subsequent pushes deploy automatically.
+
+This is exactly what gitpulse itself uses to dogfood Vercel — see [`.github/workflows/deploy-vercel.yml`](./.github/workflows/deploy-vercel.yml).
 
 </details>
 
@@ -102,7 +177,7 @@ Same shape. In `netlify.toml`:
   publish = ".gitpulse/out"
 ```
 
-Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables. The site URL is **auto-detected** from Netlify's build env (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`) — only set `GITPULSE_SITE_URL` if you want canonicals to point at a different host than what Netlify reports.
+Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables. Netlify's build env (`REPOSITORY_URL`, `URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`) is auto-detected for `GITHUB_REPOSITORY` and `GITPULSE_SITE_URL`; basePath defaults to `''` because Netlify serves at root. No other vars to set. Override `GITPULSE_SITE_URL` only for custom domains.
 
 </details>
 
@@ -113,7 +188,7 @@ In the Cloudflare Pages project:
 
 - **Build command**: `npx -y @gitpulse/cli@0 analyze && npx -y @gitpulse/cli@0 build`
 - **Build output directory**: `.gitpulse/out`
-- **Environment variables**: `OPENAI_API_KEY` + `GITHUB_TOKEN`. The site URL is auto-detected from Cloudflare's `CF_PAGES_URL`.
+- **Environment variables**: `OPENAI_API_KEY` + `GITHUB_TOKEN` + `GITHUB_REPOSITORY` (Cloudflare Pages doesn't expose repo info via env, unlike Vercel/Netlify). Site URL is auto-detected from `CF_PAGES_URL`. basePath defaults to `''` since Cloudflare serves at root.
 
 </details>
 
@@ -155,7 +230,7 @@ All config is via environment variables. The CLI has no flags.
 | Var | What it is |
 |---|---|
 | `OPENAI_API_KEY` | API key for whichever LLM provider you've configured (the env name is fixed, the value can be a MiniMax / OpenRouter / Anthropic / etc. key). |
-| `GITHUB_REPOSITORY` | `<owner>/<repo>`. Auto-set in GitHub Actions; on Vercel/Netlify you typically set this manually. |
+| `GITHUB_REPOSITORY` | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel (`VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG`) and Netlify (parsed from `REPOSITORY_URL`); set manually on Cloudflare Pages and other targets. |
 
 ### Common (optional)
 

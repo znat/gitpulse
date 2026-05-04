@@ -22,7 +22,16 @@ export interface RuntimeConfig {
 }
 
 export function loadConfig(env = process.env): RuntimeConfig {
-  const repoFullName = required(env, 'GITHUB_REPOSITORY');
+  const repoFullName =
+    env.GITHUB_REPOSITORY || detectRepoFullName(env);
+  if (!repoFullName) {
+    throw new Error(
+      'Missing GITHUB_REPOSITORY: not set and not auto-detectable. ' +
+        'Set it to <owner>/<repo>, or run on a platform that exposes ' +
+        'repo info via env (Vercel: VERCEL_GIT_REPO_OWNER + VERCEL_GIT_REPO_SLUG; ' +
+        'Netlify: REPOSITORY_URL).',
+    );
+  }
   const apiKey = required(env, 'OPENAI_API_KEY');
   const repoDir = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE ?? process.cwd();
   // Match build.ts default so the zero-config consumer flow
@@ -73,6 +82,21 @@ function autoSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
 function normalizeSiteUrl(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
   return raw.endsWith('/') ? raw : `${raw}/`;
+}
+
+// Derive `<owner>/<repo>` from build-platform env vars when GITHUB_REPOSITORY
+// isn't set (Vercel and Netlify expose this; Cloudflare Pages doesn't).
+function detectRepoFullName(env: NodeJS.ProcessEnv): string | undefined {
+  // Vercel
+  if (env.VERCEL_GIT_REPO_OWNER && env.VERCEL_GIT_REPO_SLUG) {
+    return `${env.VERCEL_GIT_REPO_OWNER}/${env.VERCEL_GIT_REPO_SLUG}`;
+  }
+  // Netlify exposes a full git URL: parse owner/repo out of it.
+  if (env.REPOSITORY_URL) {
+    const match = env.REPOSITORY_URL.match(/[:/]([^/:]+)\/([^/]+?)(?:\.git)?\/?$/);
+    if (match) return `${match[1]}/${match[2]}`;
+  }
+  return undefined;
 }
 
 function detectDeployedUrl(env: NodeJS.ProcessEnv): string | undefined {
