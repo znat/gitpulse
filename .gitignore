@@ -45,3 +45,5 @@ cli/LICENSE
 
 # npm pack artifacts (from dry-runs / local testing)
 *.tgz
+.vercel
+.env*.local
