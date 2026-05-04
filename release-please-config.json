@@ -4,13 +4,6 @@
   "include-component-in-tag": false,
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
-  "plugins": [
-    {
-      "type": "linked-versions",
-      "groupName": "gitpulse",
-      "components": ["gitpulse", "@gitpulse/cli"]
-    }
-  ],
   "packages": {
     ".": {
       "package-name": "gitpulse",

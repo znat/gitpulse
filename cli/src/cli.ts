@@ -46,7 +46,7 @@ Common build env vars (all optional):
   GITPULSE_OUT_DIR          Where to write the built site. Default: \${PWD}/.gitpulse/out.
   GITPULSE_SITE_REPO        Override fork.              Default: znat/gitpulse.
   GITPULSE_SITE_REF         Override version.           Default: v<this-cli-version>.
-  GITPULSE_BASE_PATH        Override Pages basePath ("" for Vercel/Netlify).
+  GITPULSE_BASE_PATH        Override Pages basePath ("none" for Vercel/Netlify).
                             Default: derived from GITHUB_REPOSITORY.
 
 See https://github.com/znat/gitpulse for full docs.`,
