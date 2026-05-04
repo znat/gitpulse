@@ -32,6 +32,16 @@ export function loadConfig(env = process.env): RuntimeConfig {
         'Netlify: REPOSITORY_URL).',
     );
   }
+  // Validate that repoFullName matches the "<owner>/<repo>" pattern
+  const parts = repoFullName.split('/');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new Error(
+      'Missing GITHUB_REPOSITORY: not set and not auto-detectable. ' +
+        'Set it to <owner>/<repo>, or run on a platform that exposes ' +
+        'repo info via env (Vercel: VERCEL_GIT_REPO_OWNER + VERCEL_GIT_REPO_SLUG; ' +
+        'Netlify: REPOSITORY_URL).',
+    );
+  }
   const apiKey = required(env, 'OPENAI_API_KEY');
   const repoDir = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE ?? process.cwd();
   // Match build.ts default so the zero-config consumer flow
@@ -50,12 +60,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
     limit: env.GITPULSE_LIMIT ? Number(env.GITPULSE_LIMIT) : undefined,
     concurrency: Math.max(1, Number(env.GITPULSE_CONCURRENCY ?? 10)),
     githubToken: env.GITHUB_TOKEN || undefined,
-    // `||` rather than `??` so an empty-string override (common when a CI
-    // workflow always sets the env) falls back to autoSiteUrl().
-    // Normalize explicit overrides to the same trailing-slash shape as
-    // auto-detected values so analyzer paths joined against siteUrl
-    // (data/manifest.json, data/stories/<id>.json) resolve consistently.
-    siteUrl: normalizeSiteUrl(env.GITPULSE_SITE_URL) ?? autoSiteUrl(env, repoFullName),
+    siteUrl: resolveSiteUrl(env, repoFullName),
     releasesCap: Math.max(0, Number(env.GITPULSE_RELEASES_CAP ?? 20)),
     includePrereleases: env.GITPULSE_INCLUDE_PRERELEASES !== 'false',
     ai: {
@@ -66,6 +71,39 @@ export function loadConfig(env = process.env): RuntimeConfig {
       temperature: Number(env.AI_TEMPERATURE ?? 0),
     },
   };
+}
+
+// Resolve the site URL with priority:
+// 1. Explicit GITPULSE_SITE_URL (normalized)
+// 2. Auto-detected deployed URL (normalized)
+// 3. GitHub Pages fallback (only if GITPULSE_BASE_PATH is default or 'auto')
+// Throws if GITPULSE_BASE_PATH is set to non-default and no explicit GITPULSE_SITE_URL.
+function resolveSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
+  const basePath = env.GITPULSE_BASE_PATH;
+
+  // 1. First, check for explicit GITPULSE_SITE_URL
+  const explicitUrl = normalizeSiteUrl(env.GITPULSE_SITE_URL);
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+
+  // 2. Then try auto-detected deployed URL
+  const detected = detectDeployedUrl(env);
+  if (detected) {
+    return detected.endsWith('/') ? detected : `${detected}/`;
+  }
+
+  // 3. If GITPULSE_BASE_PATH is set and not 'auto', require explicit GITPULSE_SITE_URL
+  if (basePath && basePath !== 'auto') {
+    throw new Error(
+      'GITPULSE_BASE_PATH is set to a non-default value, but GITPULSE_SITE_URL is not set. ' +
+        'When using a custom base path, you must explicitly set GITPULSE_SITE_URL.',
+    );
+  }
+
+  // 4. Fallback to GitHub Pages
+  const [owner, repo] = repoFullName.split('/');
+  return `https://${owner}.github.io/${repo}/`;
 }
 
 // Auto-detect the deployed site URL from common platform env vars.
