@@ -177,15 +177,6 @@ env:
   OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
 ```
 
-**Groq**:
-```yaml
-env:
-  AI_PROTOCOL: openai
-  AI_BASE_URL: https://api.groq.com/openai/v1
-  AI_MODEL: llama-3.3-70b-versatile
-  OPENAI_API_KEY: ${{ secrets.GROQ_API_KEY }}
-```
-
 **OpenRouter** (any model they expose):
 ```yaml
 env:
