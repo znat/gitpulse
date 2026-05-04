@@ -5,10 +5,6 @@
   "bump-minor-pre-major": true,
   "bump-patch-for-minor-pre-major": true,
   "packages": {
-    ".": {
-      "package-name": "gitpulse",
-      "changelog-path": "CHANGELOG.md"
-    },
     "cli": {
       "package-name": "@gitpulse/cli"
     }
