@@ -42,3 +42,6 @@ cli/LICENSE
 
 # typescript
 *.tsbuildinfo
+
+# npm pack artifacts (from dry-runs / local testing)
+*.tgz
