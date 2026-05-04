@@ -29,22 +29,42 @@ const SITE_NAME = 'Gitpulse';
  * Resolve the absolute base URL of the deployed site.
  *
  * Priority:
- *   1. `GITPULSE_SITE_URL` (explicit override, e.g. for custom domains)
- *   2. `https://{owner}.github.io/{repo}` derived from `GITHUB_REPOSITORY`
- *   3. Empty string (development / preview — canonical URLs become path-only)
+ *   1. `GITPULSE_SITE_URL` (explicit override, required for any non-default
+ *      deploy — Vercel, Netlify, user/org Pages, custom domain).
+ *   2. `https://{owner}.github.io/{repo}` derived from `GITHUB_REPOSITORY`,
+ *      but ONLY when `GITPULSE_BASE_PATH` is unset / 'auto' — i.e. the
+ *      project-Pages defaults align. If basePath was overridden away from
+ *      the default (e.g. 'none' for root, or a custom prefix), the GH Pages
+ *      fallback is wrong, so we return empty (path-only canonicals) and
+ *      log a warning at build time.
+ *   3. Empty string (development / preview).
  *
- * Mirrors `next.config.js` basePath logic so canonical URLs always include
- * the same `/{repo}` prefix as the served routes.
+ * Mirrors `next.config.js` basePath resolution.
  */
 export function getBaseUrl(): string {
   const explicit = process.env.GITPULSE_SITE_URL?.replace(/\/$/, '');
   if (explicit) return explicit;
+
   const fullName = process.env.GITHUB_REPOSITORY;
-  if (fullName) {
-    const [owner, repo] = fullName.split('/');
-    if (owner && repo) return `https://${owner}.github.io/${repo}`;
+  if (!fullName) return '';
+  const [owner, repo] = fullName.split('/');
+  if (!owner || !repo) return '';
+
+  const basePathOverride = process.env.GITPULSE_BASE_PATH;
+  const overrideUsesFallback =
+    !basePathOverride || basePathOverride === 'auto';
+  if (!overrideUsesFallback) {
+    if (typeof console !== 'undefined') {
+      console.warn(
+        `[gitpulse seo] GITPULSE_BASE_PATH=${JSON.stringify(basePathOverride)} ` +
+          'overrides the default; canonical URLs require GITPULSE_SITE_URL ' +
+          'to be set to the actual deployed URL. Returning empty base.',
+      );
+    }
+    return '';
   }
-  return '';
+
+  return `https://${owner}.github.io/${repo}`;
 }
 
 export function canonicalUrl(path: string): string {

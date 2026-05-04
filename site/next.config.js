@@ -1,11 +1,23 @@
 /** @type {import('next').NextConfig} */
+// GITPULSE_BASE_PATH semantics:
+//   undefined / '' / 'auto'  → derive /<repo> from GITHUB_REPOSITORY (project Pages)
+//   'none'                   → '' (root deployment — user/org Pages, custom domains)
+//   anything else            → take literally (e.g. '/blog' for sub-path mounts)
 const repo = process.env.GITHUB_REPOSITORY?.split('/')[1] ?? '';
-const basePath = repo ? `/${repo}` : '';
+const fallbackBasePath = repo ? `/${repo}` : '';
+const basePathOverride = process.env.GITPULSE_BASE_PATH;
+function resolveBasePath() {
+  if (!basePathOverride || basePathOverride === 'auto') return fallbackBasePath;
+  if (basePathOverride === 'none') return '';
+  return basePathOverride;
+}
+const basePath = resolveBasePath();
+const assetPrefix = basePath ? `${basePath}/` : '';
 
 const nextConfig = {
   output: 'export',
   basePath,
-  assetPrefix: repo ? `/${repo}/` : '',
+  assetPrefix,
   images: { unoptimized: true },
   trailingSlash: true,
   reactStrictMode: true,

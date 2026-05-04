@@ -40,7 +40,14 @@ import { encodeFilename, writeRelease } from './release-render.ts';
 import { createReleaseEditor, getFallbackEdition } from './release-llm.ts';
 import type { CommitRecord, Release, Story } from './types.ts';
 
-async function main() {
+export interface AnalyzerResult {
+  dataDir: string;
+  storiesCount: number;
+  releasesCount: number;
+  newStoriesCount: number;
+}
+
+export async function runAnalyzer(): Promise<AnalyzerResult> {
   const cfg = loadConfig();
   const branch = cfg.branch ?? defaultBranch(cfg.repoDir);
   const since = isoDaysAgo(cfg.bootstrapDays);
@@ -106,11 +113,11 @@ async function main() {
     `[gitpulse] commits in window: ${allCommits.length}, new (not in manifest): ${newCommits.length}`,
   );
 
+  let newStoriesCount = 0;
   if (newCommits.length === 0) {
     console.log('[gitpulse] no new commits to analyze');
   } else {
     const summarize = createSummarizer(cfg.ai);
-    let processed = 0;
     let failed = 0;
     await pMap(newCommits, cfg.concurrency, async (baseCommit) => {
       const result = await processCommit({
@@ -122,14 +129,14 @@ async function main() {
         repo,
       });
       if (result.ok) {
-        processed++;
+        newStoriesCount++;
         console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✓ ${result.tag}`);
       } else {
         failed++;
         console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✗ ${result.error}`);
       }
     });
-    console.log(`[gitpulse] wrote ${processed}/${newCommits.length} new stories (${failed} failed)`);
+    console.log(`[gitpulse] wrote ${newStoriesCount}/${newCommits.length} new stories (${failed} failed)`);
   }
 
   // Rebuild manifest + state from the on-disk story set.
@@ -148,6 +155,14 @@ async function main() {
   } else {
     console.log('[gitpulse] releases: skipped (no GitHub token)');
   }
+
+  const releasesCount = readAllReleases(cfg.releasesDir).length;
+  return {
+    dataDir: cfg.dataDir,
+    storiesCount: allStories.length,
+    releasesCount,
+    newStoriesCount,
+  };
 }
 
 async function processReleases(opts: {
@@ -538,8 +553,3 @@ async function backfillPRTitles(opts: {
   });
   return backfilled;
 }
-
-main().catch((err) => {
-  console.error('[gitpulse] fatal', err);
-  process.exit(1);
-});

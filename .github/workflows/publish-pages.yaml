@@ -1,0 +1,141 @@
+name: Gitpulse Publish (Pages)
+
+# Reusable workflow for repos that want gitpulse's editorial story feed
+# published to GitHub Pages. Wraps `gitpulse analyze` + `gitpulse build`
+# from the @gitpulse/cli npm package and ships the result to Pages.
+#
+# Consumer usage (pre-1.0 — pin @v0; we'll cut @v1 when the API stabilises):
+#   permissions:
+#     contents: read
+#     pages: write
+#     id-token: write
+#   jobs:
+#     publish:
+#       uses: znat/gitpulse/.github/workflows/publish-pages.yaml@v0
+#       secrets: inherit
+#
+# Reusable workflows can't elevate beyond the caller's GITHUB_TOKEN
+# permissions, so the calling workflow MUST grant pages:write and
+# id-token:write or the deploy job will fail with permission-denied.
+#
+# For non-Pages targets (Vercel, Netlify, Cloudflare Pages), call the CLI
+# directly inside your build hook — see the gitpulse README for recipes.
+
+on:
+  workflow_call:
+    inputs:
+      ai-model:
+        description: "Model id used for story generation."
+        type: string
+        default: gpt-4o-mini
+      ai-protocol:
+        description: "openai | anthropic. Use 'anthropic' for Claude or for MiniMax via its Anthropic-compatible endpoint."
+        type: string
+        default: openai
+      ai-base-url:
+        description: "Base URL for the chat-completions endpoint. Empty = OpenAI."
+        type: string
+        default: ""
+      ai-temperature:
+        description: "Sampling temperature for the LLM."
+        type: number
+        default: 0
+      bootstrap-days:
+        description: "On first run, how far back to look for PRs/commits."
+        type: number
+        default: 30
+      concurrency:
+        description: "How many commits to analyze in parallel."
+        type: number
+        default: 10
+      releases-cap:
+        description: "Max number of recent releases to process per run. 0 disables releases."
+        type: number
+        default: 20
+      include-prereleases:
+        description: "Include pre-releases (with a Pre-release badge)."
+        type: boolean
+        default: true
+      base-path:
+        description: 'basePath override for static export. "auto" (default) = /<repo> derived from GITHUB_REPOSITORY (project Pages — the common case). "none" = root deployment (user/org Pages, custom domain). Or a literal prefix like "/blog".'
+        type: string
+        default: "auto"
+      site-url:
+        description: "Absolute public URL of the deployed site (e.g. https://my.example.com). Used for canonical/SEO links and analyzer state restore. Required when base-path is not 'auto'."
+        type: string
+        default: ""
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+        # Holds the API key for whichever provider is configured via ai-base-url + ai-protocol.
+        # Always required — the analyzer will not run without it.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitpulse-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate base-path / site-url consistency
+        # When base-path is overridden away from 'auto', the GH-Pages-derived
+        # canonical URL is wrong, so site-url must be supplied explicitly.
+        if: ${{ inputs.base-path != 'auto' && inputs.site-url == '' }}
+        run: |
+          echo "::error ::base-path is '${{ inputs.base-path }}' but site-url is empty. Set site-url to your deployed URL (e.g. https://my.app) so canonical links and incremental state restore work correctly."
+          exit 1
+
+      # Pinned to commit SHAs — Dependabot rotates via .github/dependabot.yml.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 22
+
+      - name: Analyze (gitpulse analyze)
+        run: npx -y @gitpulse/cli@0 analyze
+        env:
+          AI_MODEL: ${{ inputs.ai-model }}
+          AI_PROTOCOL: ${{ inputs.ai-protocol }}
+          AI_BASE_URL: ${{ inputs.ai-base-url }}
+          AI_TEMPERATURE: ${{ inputs.ai-temperature }}
+          GITPULSE_BOOTSTRAP_DAYS: ${{ inputs.bootstrap-days }}
+          GITPULSE_CONCURRENCY: ${{ inputs.concurrency }}
+          GITPULSE_RELEASES_CAP: ${{ inputs.releases-cap }}
+          GITPULSE_INCLUDE_PRERELEASES: ${{ inputs.include-prereleases }}
+          GITPULSE_SITE_URL: ${{ inputs.site-url }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build site (gitpulse build)
+        run: npx -y @gitpulse/cli@0 build
+        env:
+          # Sentinels resolved in site/next.config.js:
+          #   "auto" (default) → basePath /<repo>/ from GITHUB_REPOSITORY
+          #   "none"           → root deployment (user/org Pages, custom domain)
+          #   "/literal/path"  → custom prefix (e.g. /blog)
+          GITPULSE_BASE_PATH: ${{ inputs.base-path }}
+          GITPULSE_SITE_URL: ${{ inputs.site-url }}
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./.gitpulse/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
