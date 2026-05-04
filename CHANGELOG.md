@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/znat/gitpulse/compare/v0.1.1...v0.1.2) (2026-05-04)
+
+
+### Bug Fixes
+
+* **release-please:** use bare release outputs (linked-versions doesn't emit per-package) ([7afb79c](https://github.com/znat/gitpulse/commit/7afb79c7448defd2b16bca614efc0313d2282e7e))
+
 ## [0.1.1](https://github.com/znat/gitpulse/compare/v0.1.0...v0.1.1) (2026-05-04)
 
 
