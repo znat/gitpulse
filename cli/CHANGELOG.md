@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/znat/gitpulse/compare/v0.1.2...v0.1.3) (2026-05-04)
+
+
+### Features
+
+* dogfood published @gitpulse/cli; add Vercel config; package README ([#35](https://github.com/znat/gitpulse/issues/35)) ([2de061b](https://github.com/znat/gitpulse/commit/2de061b707927280ef51fe21b01d1c366dc2e660))
+
 ## [0.1.2](https://github.com/znat/gitpulse/compare/v0.1.1...v0.1.2) (2026-05-04)
 
 
