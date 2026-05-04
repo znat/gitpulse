@@ -269,7 +269,7 @@ OPENAI_API_KEY=<your anthropic key>
 
 ## CLI commands
 
-```
+```text
 gitpulse <command>
 
 Commands:
