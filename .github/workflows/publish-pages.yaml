@@ -99,7 +99,7 @@ jobs:
           node-version: 22
 
       - name: Analyze (gitpulse analyze)
-        run: npx -y @gitpulse/cli@0 analyze
+        run: npx -y --package=@gitpulse/cli@0 gitpulse analyze
         env:
           AI_MODEL: ${{ inputs.ai-model }}
           AI_PROTOCOL: ${{ inputs.ai-protocol }}
@@ -114,7 +114,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build site (gitpulse build)
-        run: npx -y @gitpulse/cli@0 build
+        run: npx -y --package=@gitpulse/cli@0 gitpulse build
         env:
           # Sentinels resolved in site/next.config.js:
           #   "auto" (default) → basePath /<repo>/ from GITHUB_REPOSITORY
