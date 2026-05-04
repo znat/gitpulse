@@ -22,7 +22,26 @@ export interface RuntimeConfig {
 }
 
 export function loadConfig(env = process.env): RuntimeConfig {
-  const repoFullName = required(env, 'GITHUB_REPOSITORY');
+  const repoFullName =
+    env.GITHUB_REPOSITORY || detectRepoFullName(env);
+  if (!repoFullName) {
+    throw new Error(
+      'Missing GITHUB_REPOSITORY: not set and not auto-detectable. ' +
+        'Set it to <owner>/<repo>, or run on a platform that exposes ' +
+        'repo info via env (Vercel: VERCEL_GIT_REPO_OWNER + VERCEL_GIT_REPO_SLUG; ' +
+        'Netlify: REPOSITORY_URL).',
+    );
+  }
+  // Validate that repoFullName matches the "<owner>/<repo>" pattern
+  const parts = repoFullName.split('/');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
+    throw new Error(
+      'Missing GITHUB_REPOSITORY: not set and not auto-detectable. ' +
+        'Set it to <owner>/<repo>, or run on a platform that exposes ' +
+        'repo info via env (Vercel: VERCEL_GIT_REPO_OWNER + VERCEL_GIT_REPO_SLUG; ' +
+        'Netlify: REPOSITORY_URL).',
+    );
+  }
   const apiKey = required(env, 'OPENAI_API_KEY');
   const repoDir = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE ?? process.cwd();
   // Match build.ts default so the zero-config consumer flow
@@ -41,9 +60,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
     limit: env.GITPULSE_LIMIT ? Number(env.GITPULSE_LIMIT) : undefined,
     concurrency: Math.max(1, Number(env.GITPULSE_CONCURRENCY ?? 10)),
     githubToken: env.GITHUB_TOKEN || undefined,
-    // `||` rather than `??` so an empty-string override (common when a CI
-    // workflow always sets the env) falls back to autoSiteUrl().
-    siteUrl: env.GITPULSE_SITE_URL || autoSiteUrl(repoFullName),
+    siteUrl: resolveSiteUrl(env, repoFullName),
     releasesCap: Math.max(0, Number(env.GITPULSE_RELEASES_CAP ?? 20)),
     includePrereleases: env.GITPULSE_INCLUDE_PRERELEASES !== 'false',
     ai: {
@@ -56,9 +73,88 @@ export function loadConfig(env = process.env): RuntimeConfig {
   };
 }
 
-function autoSiteUrl(repoFullName: string): string {
+// Resolve the site URL with priority:
+// 1. Explicit GITPULSE_SITE_URL (normalized)
+// 2. Auto-detected deployed URL (normalized)
+// 3. GitHub Pages fallback (only if GITPULSE_BASE_PATH is default or 'auto')
+// Throws if GITPULSE_BASE_PATH is set to non-default and no explicit GITPULSE_SITE_URL.
+function resolveSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
+  const basePath = env.GITPULSE_BASE_PATH;
+
+  // 1. First, check for explicit GITPULSE_SITE_URL
+  const explicitUrl = normalizeSiteUrl(env.GITPULSE_SITE_URL);
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+
+  // 2. Then try auto-detected deployed URL
+  const detected = detectDeployedUrl(env);
+  if (detected) {
+    return detected.endsWith('/') ? detected : `${detected}/`;
+  }
+
+  // 3. If GITPULSE_BASE_PATH is set and not 'auto', require explicit GITPULSE_SITE_URL
+  if (basePath && basePath !== 'auto') {
+    throw new Error(
+      'GITPULSE_BASE_PATH is set to a non-default value, but GITPULSE_SITE_URL is not set. ' +
+        'When using a custom base path, you must explicitly set GITPULSE_SITE_URL.',
+    );
+  }
+
+  // 4. Fallback to GitHub Pages
   const [owner, repo] = repoFullName.split('/');
   return `https://${owner}.github.io/${repo}/`;
+}
+
+// Auto-detect the deployed site URL from common platform env vars.
+// Priority: Vercel → Netlify → Cloudflare Pages → GH Pages fallback.
+// Always returns a URL ending in '/' so the analyzer can append paths
+// directly (data/manifest.json, etc.).
+function autoSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
+  const detected = detectDeployedUrl(env);
+  if (detected) return detected.endsWith('/') ? detected : `${detected}/`;
+  const [owner, repo] = repoFullName.split('/');
+  return `https://${owner}.github.io/${repo}/`;
+}
+
+function normalizeSiteUrl(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  return raw.endsWith('/') ? raw : `${raw}/`;
+}
+
+// Derive `<owner>/<repo>` from build-platform env vars when GITHUB_REPOSITORY
+// isn't set (Vercel and Netlify expose this; Cloudflare Pages doesn't).
+function detectRepoFullName(env: NodeJS.ProcessEnv): string | undefined {
+  // Vercel
+  if (env.VERCEL_GIT_REPO_OWNER && env.VERCEL_GIT_REPO_SLUG) {
+    return `${env.VERCEL_GIT_REPO_OWNER}/${env.VERCEL_GIT_REPO_SLUG}`;
+  }
+  // Netlify exposes a full git URL: parse owner/repo out of it.
+  if (env.REPOSITORY_URL) {
+    const match = env.REPOSITORY_URL.match(/[:/]([^/:]+)\/([^/]+?)(?:\.git)?\/?$/);
+    if (match) return `${match[1]}/${match[2]}`;
+  }
+  return undefined;
+}
+
+function detectDeployedUrl(env: NodeJS.ProcessEnv): string | undefined {
+  // Vercel: production prefers the stable URL, previews use VERCEL_URL.
+  if (env.VERCEL) {
+    const host =
+      env.VERCEL_ENV === 'production'
+        ? env.VERCEL_PROJECT_PRODUCTION_URL ?? env.VERCEL_URL
+        : env.VERCEL_URL;
+    if (host) return `https://${host}`;
+  }
+  // Netlify: URL is the canonical, DEPLOY_PRIME_URL is branch-specific.
+  if (env.NETLIFY === 'true') {
+    return env.URL || env.DEPLOY_PRIME_URL || env.DEPLOY_URL;
+  }
+  // Cloudflare Pages.
+  if (env.CF_PAGES === '1' && env.CF_PAGES_URL) {
+    return env.CF_PAGES_URL;
+  }
+  return undefined;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {

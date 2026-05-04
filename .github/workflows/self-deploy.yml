@@ -1,9 +1,13 @@
 name: Self-deploy
 
-# Runs the gitpulse analyzer on this repo (znat/gitpulse) — dogfoods the
-# local CLI workspace + site build on every push to main, without depending
-# on the published @gitpulse/cli package. This is the bleeding-edge path;
-# external consumers use publish-pages.yaml + the published CLI instead.
+# Dogfoods the published @gitpulse/cli + the public publish-pages.yaml
+# reusable workflow exactly as external consumers experience them.
+# Every push to main hits npx @gitpulse/cli@0 (analyze + build) →
+# checkpoint that the consumer flow stays green.
+#
+# Local-workspace testing (against bleeding-edge code, not the published
+# version) happens via `yarn workspace @gitpulse/cli analyze` during dev,
+# and via the CI typecheck/test/build job in ci.yml on every PR.
 
 on:
   push:
@@ -12,57 +16,20 @@ on:
     types: [published]
   workflow_dispatch:
 
+# Reusable workflows can't elevate beyond the caller's GITHUB_TOKEN scope —
+# pages: write + id-token: write must be granted here for publish-pages.yaml's
+# inner deploy job to succeed.
 permissions:
   contents: read
-
-concurrency:
-  group: gitpulse-self-deploy
-  cancel-in-progress: false
+  pages: write
+  id-token: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: yarn
-
-      - run: yarn install --frozen-lockfile
-
-      - name: Run analyzer (gitpulse analyze)
-        run: yarn workspace @gitpulse/cli analyze
-        env:
-          AI_PROTOCOL: openai
-          AI_BASE_URL: https://api.minimax.io/v1
-          AI_MODEL: MiniMax-M2.7
-          AI_TEMPERATURE: "0"
-          GITPULSE_BOOTSTRAP_DAYS: "30"
-          # Site reads from site/public/data/, so write directly there.
-          GITPULSE_DATA_DIR: ${{ github.workspace }}/site/public/data
-          OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build site
-        run: yarn workspace @gitpulse/site build
-
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site/out
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v5
+  publish:
+    uses: znat/gitpulse/.github/workflows/publish-pages.yaml@v0
+    with:
+      ai-protocol: openai
+      ai-base-url: https://api.minimax.io/v1
+      ai-model: MiniMax-M2.7
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}

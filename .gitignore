@@ -35,6 +35,13 @@ coverage
 site/out/
 site/.next/
 site/public/data/
+# `cli/{README,LICENSE}.md` are copied from repo root by cli's prepack
+# script before npm pack — never commit them, the originals live at root.
+cli/README.md
+cli/LICENSE
 
 # typescript
 *.tsbuildinfo
+
+# npm pack artifacts (from dry-runs / local testing)
+*.tgz

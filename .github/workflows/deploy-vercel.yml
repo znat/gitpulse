@@ -1,0 +1,94 @@
+name: Deploy to Vercel
+
+# Mirrors what a consumer repo would do under "option 4": analyze + build
+# run here in CI (using the published @gitpulse/cli@0); Vercel just hosts
+# the pre-built static output. No Vercel-side build, no env vars to
+# maintain on Vercel, no LLM keys leaving the CI runner.
+#
+# Runs alongside self-deploy.yml (Pages target). Both deploys are
+# independent — gitpulse ships to both znat.github.io/gitpulse and the
+# Vercel URL on every push to main.
+#
+# One-time setup (no local CLI required):
+#   1. Create a Vercel project at https://vercel.com/new — skip the
+#      "Import Git Repository" step (we don't want webhook builds, CI
+#      handles deploys).
+#   2. Copy these into repo SECRETS (Settings → Secrets and variables
+#      → Actions → New repository secret):
+#        VERCEL_TOKEN       — https://vercel.com/account/tokens
+#        VERCEL_PROJECT_ID  — Project → Settings → General → Project ID
+#        VERCEL_ORG_ID      — Team avatar (top right) → Settings →
+#                             General → Team ID
+#   3. Add a repo VARIABLE (Variables tab, not Secrets — it's public):
+#        VERCEL_SITE_URL = https://<project>.vercel.app/
+#        (or your custom domain). Used as the canonical site URL for
+#        analyzer state restore + the site's <meta> canonicals.
+#
+# Alternative: run `vercel link` locally to extract orgId + projectId
+# from the generated .vercel/project.json. Same result.
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitpulse-vercel
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Analyze (gitpulse analyze)
+        run: npx -y @gitpulse/cli@0 analyze
+        env:
+          AI_PROTOCOL: openai
+          AI_BASE_URL: https://api.minimax.io/v1
+          AI_MODEL: MiniMax-M2.7
+          # Hardcoded production URL (repo variable). Vercel's prod alias
+          # is stable per project — no need to query the API on every run.
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
+          OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build site (gitpulse build)
+        run: npx -y @gitpulse/cli@0 build
+        env:
+          # Vercel serves at root, not /<repo>/.
+          GITPULSE_BASE_PATH: none
+          # Bake the canonical URL into the static HTML's <meta> tags.
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
+
+      - name: Stage prebuilt output for Vercel
+        # Vercel's --prebuilt flag expects this exact directory layout.
+        # https://vercel.com/docs/build-output-api/v3
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel/output/static
+          cp -RT .gitpulse/out .vercel/output/static
+          cat > .vercel/output/config.json <<'EOF'
+          { "version": 3 }
+          EOF
+
+      - name: Deploy to Vercel
+        run: |
+          npm install -g vercel@latest
+          vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
