@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx -y @gitpulse/cli@0 analyze && npx -y @gitpulse/cli@0 build",
+  "outputDirectory": ".gitpulse/out",
+  "installCommand": "echo Skipping install — using published @gitpulse/cli@0",
+  "framework": null
+}
