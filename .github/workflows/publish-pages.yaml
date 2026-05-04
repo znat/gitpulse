@@ -5,10 +5,18 @@ name: Gitpulse Publish (Pages)
 # from the @gitpulse/cli npm package and ships the result to Pages.
 #
 # Consumer usage (pre-1.0 — pin @v0; we'll cut @v1 when the API stabilises):
+#   permissions:
+#     contents: read
+#     pages: write
+#     id-token: write
 #   jobs:
 #     publish:
 #       uses: znat/gitpulse/.github/workflows/publish-pages.yaml@v0
 #       secrets: inherit
+#
+# Reusable workflows can't elevate beyond the caller's GITHUB_TOKEN
+# permissions, so the calling workflow MUST grant pages:write and
+# id-token:write or the deploy job will fail with permission-denied.
 #
 # For non-Pages targets (Vercel, Netlify, Cloudflare Pages), call the CLI
 # directly inside your build hook — see the gitpulse README for recipes.

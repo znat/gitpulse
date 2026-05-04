@@ -44,6 +44,13 @@ on:
     types: [published]
   workflow_dispatch:
 
+# Reusable workflows inherit the caller's token permissions; these grants
+# are required for the deploy step inside publish-pages.yaml.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   publish:
     uses: znat/gitpulse/.github/workflows/publish-pages.yaml@v0
