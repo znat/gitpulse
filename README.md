@@ -140,12 +140,17 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 ```
 
-**One-time setup:**
-1. Create a Vercel project (any framework — it doesn't matter; Vercel won't build).
-2. From your local checkout: `vercel link` to bind it. Copy `orgId` and `projectId` out of `.vercel/project.json` into repo secrets `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
-3. Generate a Vercel token at https://vercel.com/account/tokens, store as `VERCEL_TOKEN` repo secret.
-4. Add a repo **variable** (Settings → Variables, not Secrets — the URL is public): `VERCEL_SITE_URL = https://<project>.vercel.app/` (or your custom domain). Used as the canonical URL for analyzer state restore + the site's `<meta>` canonicals.
-5. Push to `main` → first deploy seeds the project. Subsequent pushes deploy automatically.
+**One-time setup (no local CLI required):**
+1. Create a Vercel project at https://vercel.com/new. When it asks to import a Git repository, **skip** — we don't want Vercel's webhook builds (CI handles deploys).
+2. From the Vercel dashboard, copy three values into GitHub repo **secrets** (Settings → Secrets and variables → Actions → New repository secret):
+   - `VERCEL_TOKEN` — generate at https://vercel.com/account/tokens
+   - `VERCEL_PROJECT_ID` — Project → **Settings → General → Project ID**
+   - `VERCEL_ORG_ID` — Team avatar (top right) → **Settings → General → Team ID**
+3. Add a repo **variable** (Settings → Secrets and variables → Actions → **Variables tab** — variables, not secrets, since the URL is public):
+   - `VERCEL_SITE_URL = https://<project>.vercel.app/` (or your custom domain). Used as the canonical URL for analyzer state restore + the site's `<meta>` canonicals.
+4. Push to `main` → first deploy seeds the project. Subsequent pushes deploy automatically.
+
+If you prefer, you can also run `vercel link` locally to pull the same IDs from `.vercel/project.json` — same result, different path.
 
 This is exactly what gitpulse itself uses to dogfood Vercel — see [`.github/workflows/deploy-vercel.yml`](./.github/workflows/deploy-vercel.yml).
 
