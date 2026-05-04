@@ -1,8 +1,8 @@
 # gitpulse
 
-**An editorial story feed for your repo's pull requests and direct pushes — published to GitHub Pages, Vercel, Netlify, or anywhere else you serve a static site.**
+`git log` was never meant for humans.
 
-Every push, gitpulse walks your default branch, classifies each commit, writes a short editorial-style story for each, and rebuilds a static feed at your chosen URL.
+gitpulse turns your commit history into a beautifully typeset editorial publication — a polished story feed that reads like a magazine, not a terminal. One crafted post per meaningful change, AI-generated and deployed as a static site on every push. No database, no server, no maintenance.
 
 No database. No external services beyond GitHub and your LLM provider.
 
@@ -114,13 +114,13 @@ jobs:
       - uses: actions/setup-node@v6
         with: { node-version: 22 }
 
-      - run: npx -y --package=@gitpulse/cli@0 gitpulse analyze
+      - run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
           GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
 
-      - run: npx -y --package=@gitpulse/cli@0 gitpulse build
+      - run: gitpulse build
         env:
           GITPULSE_BASE_PATH: none
           GITPULSE_SITE_URL:  ${{ vars.VERCEL_SITE_URL }}
@@ -163,7 +163,7 @@ Same shape. In `netlify.toml`:
 
 ```toml
 [build]
-  command = "npx -y --package=@gitpulse/cli@0 gitpulse analyze && npx -y --package=@gitpulse/cli@0 gitpulse build"
+  command = "npm install -g @gitpulse/cli@0 --silent && gitpulse analyze && gitpulse build"
   publish = ".gitpulse/out"
 ```
 
@@ -176,7 +176,7 @@ Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment v
 
 In the Cloudflare Pages project:
 
-- **Build command**: `npx -y --package=@gitpulse/cli@0 gitpulse analyze && npx -y --package=@gitpulse/cli@0 gitpulse build`
+- **Build command**: `npm install -g @gitpulse/cli@0 --silent && gitpulse analyze && gitpulse build`
 - **Build output directory**: `.gitpulse/out`
 - **Environment variables**: `OPENAI_API_KEY` + `GITHUB_TOKEN` + `GITHUB_REPOSITORY` (Cloudflare Pages doesn't expose repo info via env, unlike Vercel/Netlify). Site URL is auto-detected from `CF_PAGES_URL`. basePath defaults to `''` since Cloudflare serves at root.
 
@@ -194,12 +194,12 @@ The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever
 - uses: actions/setup-node@v6
   with: { node-version: 22 }
 
-- run: npx -y --package=@gitpulse/cli@0 gitpulse analyze
+- run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
   env:
     OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
 
-- run: npx -y --package=@gitpulse/cli@0 gitpulse build
+- run: gitpulse build
   env:
     GITPULSE_BASE_PATH: none
     GITPULSE_SITE_URL: https://my.bucket.example.com
@@ -264,7 +264,7 @@ For **Vercel / Netlify / Cloudflare Pages**, set the same names as project Envir
 For a **generic GitHub Actions step** (your own workflow, not the reusable one):
 
 ```yaml
-- run: npx -y --package=@gitpulse/cli@0 gitpulse analyze
+- run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
   env:
     AI_MODEL:       <model id>
     AI_PROTOCOL:    openai           # or "anthropic"
