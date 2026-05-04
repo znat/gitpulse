@@ -54,7 +54,7 @@ jobs:
           node-version: 22
 
       - name: Analyze (gitpulse analyze)
-        run: npx -y @gitpulse/cli@0 analyze
+        run: npx -y --package=@gitpulse/cli@0 gitpulse analyze
         env:
           AI_PROTOCOL: openai
           AI_BASE_URL: https://api.minimax.io/v1
@@ -66,7 +66,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build site (gitpulse build)
-        run: npx -y @gitpulse/cli@0 build
+        run: npx -y --package=@gitpulse/cli@0 gitpulse build
         env:
           # Vercel serves at root, not /<repo>/.
           GITPULSE_BASE_PATH: none
