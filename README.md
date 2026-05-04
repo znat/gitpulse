@@ -171,7 +171,7 @@ All config is via environment variables. The CLI has no flags.
 | `GITPULSE_RELEASES_CAP` | `20` | Max releases to process per run. `0` disables the releases pass. |
 | `GITPULSE_INCLUDE_PRERELEASES` | `true` | Include prereleases in the feed. |
 | `GITPULSE_BASE_PATH` | `auto` | `auto` = derive `/<repo>` from `GITHUB_REPOSITORY` (project Pages). `none` = root deployment (Vercel, user/org Pages, custom domain). Or a literal prefix like `/blog`. |
-| `GITPULSE_SITE_URL` | auto-detected | Absolute URL of the deployed site (used for canonical URLs and incremental state restore). Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. Set explicitly to override for custom domains. |
+| `GITPULSE_SITE_URL` | auto-detected | Absolute URL of the deployed site (used for canonical URLs and incremental state restore). Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. Set explicitly to override for custom domains. |
 | `GITPULSE_DATA_DIR` | `./.gitpulse/data` | Where `analyze` writes JSON. `build` reads from here. |
 | `GITPULSE_OUT_DIR` | `./.gitpulse/out` | Where `build` writes the static site. |
 

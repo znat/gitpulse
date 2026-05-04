@@ -36,7 +36,7 @@
   "scripts": {
     "analyze": "tsx src/cli.ts analyze",
     "build": "tsc -p tsconfig.build.json",
-    "prepack": "cp -f ../README.md ../LICENSE .",
+    "prepack": "node -e \"['README.md','LICENSE'].forEach(f=>require('fs').copyFileSync('../'+f,f))\"",
     "prepublishOnly": "yarn build",
     "lint": "echo 'no lint yet'",
     "typecheck": "tsc --noEmit",

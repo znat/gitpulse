@@ -43,7 +43,10 @@ export function loadConfig(env = process.env): RuntimeConfig {
     githubToken: env.GITHUB_TOKEN || undefined,
     // `||` rather than `??` so an empty-string override (common when a CI
     // workflow always sets the env) falls back to autoSiteUrl().
-    siteUrl: env.GITPULSE_SITE_URL || autoSiteUrl(env, repoFullName),
+    // Normalize explicit overrides to the same trailing-slash shape as
+    // auto-detected values so analyzer paths joined against siteUrl
+    // (data/manifest.json, data/stories/<id>.json) resolve consistently.
+    siteUrl: normalizeSiteUrl(env.GITPULSE_SITE_URL) ?? autoSiteUrl(env, repoFullName),
     releasesCap: Math.max(0, Number(env.GITPULSE_RELEASES_CAP ?? 20)),
     includePrereleases: env.GITPULSE_INCLUDE_PRERELEASES !== 'false',
     ai: {
@@ -65,6 +68,11 @@ function autoSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
   if (detected) return detected.endsWith('/') ? detected : `${detected}/`;
   const [owner, repo] = repoFullName.split('/');
   return `https://${owner}.github.io/${repo}/`;
+}
+
+function normalizeSiteUrl(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  return raw.endsWith('/') ? raw : `${raw}/`;
 }
 
 function detectDeployedUrl(env: NodeJS.ProcessEnv): string | undefined {
