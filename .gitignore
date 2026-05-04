@@ -45,3 +45,6 @@ cli/LICENSE
 
 # npm pack artifacts (from dry-runs / local testing)
 *.tgz
+
+# Vercel CLI workspace (orgId/projectId belong in repo secrets, not in repo)
+.vercel/
