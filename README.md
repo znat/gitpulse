@@ -114,32 +114,16 @@ jobs:
       - uses: actions/setup-node@v6
         with: { node-version: 22 }
 
-      - name: Resolve Vercel production URL
-        id: vercel-url
-        run: |
-          set -euo pipefail
-          INFO=$(curl -fsSL -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v9/projects/$VERCEL_PROJECT_ID?teamId=$VERCEL_ORG_ID")
-          URL=$(echo "$INFO" | jq -r '
-            ([.alias[]? | select(.target == "PRODUCTION") | .domain]
-              | sort_by(endswith(".vercel.app")) | .[0]
-            ) // (.name + ".vercel.app")')
-          echo "url=https://${URL}/" >> "$GITHUB_OUTPUT"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-
       - run: npx -y @gitpulse/cli@0 analyze
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN:    ${{ secrets.GITHUB_TOKEN }}
-          GITPULSE_SITE_URL: ${{ steps.vercel-url.outputs.url }}
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
 
       - run: npx -y @gitpulse/cli@0 build
         env:
           GITPULSE_BASE_PATH: none
-          GITPULSE_SITE_URL:  ${{ steps.vercel-url.outputs.url }}
+          GITPULSE_SITE_URL:  ${{ vars.VERCEL_SITE_URL }}
 
       - name: Stage for Vercel prebuilt deploy
         run: |
@@ -160,7 +144,8 @@ jobs:
 1. Create a Vercel project (any framework — it doesn't matter; Vercel won't build).
 2. From your local checkout: `vercel link` to bind it. Copy `orgId` and `projectId` out of `.vercel/project.json` into repo secrets `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`.
 3. Generate a Vercel token at https://vercel.com/account/tokens, store as `VERCEL_TOKEN` repo secret.
-4. Push to `main` → first deploy seeds the project. Subsequent pushes deploy automatically.
+4. Add a repo **variable** (Settings → Variables, not Secrets — the URL is public): `VERCEL_SITE_URL = https://<project>.vercel.app/` (or your custom domain). Used as the canonical URL for analyzer state restore + the site's `<meta>` canonicals.
+5. Push to `main` → first deploy seeds the project. Subsequent pushes deploy automatically.
 
 This is exactly what gitpulse itself uses to dogfood Vercel — see [`.github/workflows/deploy-vercel.yml`](./.github/workflows/deploy-vercel.yml).
 
