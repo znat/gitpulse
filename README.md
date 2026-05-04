@@ -25,11 +25,12 @@ State is the deployed site itself. Each run fetches the previous `data/manifest.
 
 ## Quickstart
 
-> Pre-1.0 — the CLI is at `0.x.y` and consumers pin `@gitpulse/cli@0` (npm) and `znat/gitpulse/.github/workflows/publish-pages.yaml@v0` (workflow). When the API stabilises, both move to `@1` / `@v0`.
+> Pre-1.0 — the CLI is at `0.x.y` and consumers pin `@gitpulse/cli@0` (npm) and `znat/gitpulse/.github/workflows/publish-pages.yaml@v0` (workflow). When the API stabilises, both move to `@1` / `@v1`.
 
 You'll need a repository secret `OPENAI_API_KEY` (or whichever provider's key — see [LLM providers](#llm-providers) below).
 
-### GitHub Pages — one-liner
+<details open>
+<summary><b>GitHub Pages</b> — one-line reusable workflow</summary>
 
 In your repo's **Settings → Pages → Source: GitHub Actions**, then drop this in `.github/workflows/gitpulse.yml`:
 
@@ -51,7 +52,10 @@ jobs:
 
 That's it. First run bootstraps from the last 30 days of history; subsequent runs are incremental.
 
-### Vercel — build hook (no GitHub Actions)
+</details>
+
+<details>
+<summary><b>Vercel</b> — build hook (no GitHub Actions)</summary>
 
 Vercel auto-builds on every push if you connect the repo. Make gitpulse part of that build:
 
@@ -78,7 +82,10 @@ In Vercel's **Project Settings → Environment Variables**, set:
 
 For Vercel's auto-detection to find `next build` output, make sure the framework preset is "Next.js" and the build output is `out` (or however your `next.config.js` is configured).
 
-### Netlify — build hook
+</details>
+
+<details>
+<summary><b>Netlify</b> — build hook</summary>
 
 Same shape. In `netlify.toml`:
 
@@ -94,7 +101,10 @@ Same shape. In `netlify.toml`:
 
 Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables.
 
-### Cloudflare Pages — build hook
+</details>
+
+<details>
+<summary><b>Cloudflare Pages</b> — build command in dashboard</summary>
 
 In the Cloudflare Pages project:
 
@@ -102,7 +112,10 @@ In the Cloudflare Pages project:
 - **Build output directory**: `.gitpulse/out`
 - **Environment variables**: same set as Vercel/Netlify above (`GITPULSE_BASE_PATH=none`, etc.)
 
-### Anywhere else (S3, GitLab CI, custom Pages)
+</details>
+
+<details>
+<summary><b>Anywhere else</b> — S3, GitLab CI, custom Pages</summary>
 
 The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever pipeline you have:
 
@@ -126,6 +139,8 @@ The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever
 - run: aws s3 sync ./.gitpulse/out s3://my-bucket --delete
 ```
 
+</details>
+
 ---
 
 ## Configuration
@@ -136,7 +151,7 @@ All config is via environment variables. The CLI has no flags.
 
 | Var | What it is |
 |---|---|
-| `OPENAI_API_KEY` | API key for whichever LLM provider you've configured (the env name is fixed, the value can be a Groq/MiniMax/etc. key). |
+| `OPENAI_API_KEY` | API key for whichever LLM provider you've configured (the env name is fixed, the value can be a MiniMax / OpenRouter / Anthropic / etc. key). |
 | `GITHUB_REPOSITORY` | `<owner>/<repo>`. Auto-set in GitHub Actions; on Vercel/Netlify you typically set this manually. |
 
 ### Common (optional)
@@ -159,42 +174,96 @@ All config is via environment variables. The CLI has no flags.
 
 ### LLM providers
 
-The secret env var is always `OPENAI_API_KEY` — set it to whichever provider's key matches your `AI_BASE_URL` + `AI_PROTOCOL`.
+The CLI reads provider config from environment variables. The secret env var is always `OPENAI_API_KEY` — its value is whichever provider's key matches your `AI_BASE_URL` and `AI_PROTOCOL`.
 
-**OpenAI** (default — no extra config):
+**Where to wire them, by deploy target:**
+
+For the **Pages reusable workflow**, non-secret values go through `with:`; the secret rides on `secrets: inherit`:
+
 ```yaml
-env:
-  AI_MODEL: gpt-4o-mini
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+jobs:
+  publish:
+    uses: znat/gitpulse/.github/workflows/publish-pages.yaml@v0
+    with:
+      ai-protocol: openai            # or "anthropic"
+      ai-base-url: ""                # see provider-specific values below
+      ai-model: gpt-4o-mini
+    secrets: inherit                 # supplies OPENAI_API_KEY repo secret
 ```
 
-**MiniMax** (cheap, fast, OpenAI-compatible):
+For **Vercel / Netlify / Cloudflare Pages**, set the same names as project Environment Variables in the dashboard. See the Quickstart section for each.
+
+For a **generic GitHub Actions step** (your own workflow, not the reusable one):
+
 ```yaml
-env:
-  AI_PROTOCOL: openai
-  AI_BASE_URL: https://api.minimax.io/v1
-  AI_MODEL: MiniMax-M2.7
-  OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+- run: npx -y @gitpulse/cli@0 analyze
+  env:
+    AI_MODEL:       <model id>
+    AI_PROTOCOL:    openai           # or "anthropic"
+    AI_BASE_URL:    <provider base url>
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**OpenRouter** (any model they expose):
-```yaml
-env:
-  AI_PROTOCOL: openai
-  AI_BASE_URL: https://openrouter.ai/api/v1
-  AI_MODEL: anthropic/claude-sonnet-4-6
-  OPENAI_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+For **local CLI use**, in a `.env` next to the invocation:
+
+```bash
+AI_MODEL=<model id>
+AI_PROTOCOL=openai
+AI_BASE_URL=<provider base url>
+OPENAI_API_KEY=<your provider key>
 ```
 
-**Anthropic Claude** (native):
-```yaml
-env:
-  AI_PROTOCOL: anthropic
-  AI_MODEL: claude-sonnet-4-6
-  OPENAI_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+**Provider-specific values:**
+
+<details>
+<summary><b>OpenAI</b> (default)</summary>
+
+```bash
+AI_MODEL=gpt-4o-mini
+OPENAI_API_KEY=<your openai key>
 ```
 
-If you're using `publish-pages.yaml`, pass these via the workflow inputs (`ai-model`, `ai-protocol`, `ai-base-url`, `ai-temperature`) — see the workflow file for the full list.
+`AI_PROTOCOL` and `AI_BASE_URL` aren't needed — they default to OpenAI.
+
+</details>
+
+<details>
+<summary><b>MiniMax</b> (cheap, OpenAI-compatible)</summary>
+
+```bash
+AI_PROTOCOL=openai
+AI_BASE_URL=https://api.minimax.io/v1
+AI_MODEL=MiniMax-M2.7
+OPENAI_API_KEY=<your minimax key>
+```
+
+</details>
+
+<details>
+<summary><b>OpenRouter</b> (any model they expose)</summary>
+
+```bash
+AI_PROTOCOL=openai
+AI_BASE_URL=https://openrouter.ai/api/v1
+AI_MODEL=anthropic/claude-sonnet-4-6
+OPENAI_API_KEY=<your openrouter key>
+```
+
+</details>
+
+<details>
+<summary><b>Anthropic Claude</b> (native)</summary>
+
+```bash
+AI_PROTOCOL=anthropic
+AI_MODEL=claude-sonnet-4-6
+OPENAI_API_KEY=<your anthropic key>
+```
+
+`AI_BASE_URL` isn't needed — uses Anthropic's default endpoint.
+
+</details>
 
 ---
 
@@ -242,69 +311,6 @@ GITPULSE_SITE_REPO=$PWD GITPULSE_SITE_REF=$(git rev-parse HEAD) \
 GITPULSE_BASE_PATH=none \
 node cli/dist/cli.js build
 ```
-
----
-
-## Releasing (maintainers)
-
-Two flows: **release-please** as the everyday path, and a **manual workflow** as the hotfix escape hatch.
-
-### Default: release-please (automated)
-
-You don't pick a version number — the bot reads conventional commit titles since the last release and computes the bump for you.
-
-1. Land PRs to `main` with **conventional commit titles**:
-   - `feat: …` → minor bump (`0.1.0` → `0.2.0`)
-   - `fix: …` → patch bump (`0.1.0` → `0.1.1`)
-   - `feat!: …` or `BREAKING CHANGE:` in the body → major bump (post-1.0)
-   - `chore:`, `docs:`, `test:`, `refactor:`, `perf:`, `ci:`, `build:`, `style:`, `revert:` — no bump, but show up in CHANGELOG sections
-2. release-please opens (or updates) a PR titled **`chore(main): release vX.Y.Z`** containing version bumps to root + `cli/` `package.json` (held in lockstep by the `linked-versions` plugin) and a `CHANGELOG.md` diff.
-3. Review the release PR. When it looks right, **merge it**.
-4. release-please then automatically:
-   - tags the merge commit `vX.Y.Z`
-   - creates a GitHub Release with the same notes
-   - moves the `v0` floating tag to point at the new release (so consumers pinning `@v0` get non-breaking upgrades automatically)
-   - **publishes `@gitpulse/cli@<version>` to npm via Trusted Publishing (OIDC)** — no `NPM_TOKEN` secret required
-
-A separate workflow (`lint-pr-title`) runs on every PR and flags non-conventional titles as a status check. It doesn't block merge — but if you ignore it, that PR's commit doesn't show up in the next CHANGELOG.
-
-### Trusted Publishing setup (one-time)
-
-The `publish-cli` job uses [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) — the runner's OIDC token is exchanged for a short-lived publish credential at runtime. To enable:
-
-1. Visit https://www.npmjs.com/package/@gitpulse/cli/access → **Trusted Publishers** → **Add Trusted Publisher**.
-2. Set:
-   - **Provider**: GitHub Actions
-   - **Repository owner**: `znat`
-   - **Repository name**: `gitpulse`
-   - **Workflow filename**: `release-please.yml`
-   - **Environment name**: *(leave blank)*
-
-That's the entire auth model — no token to rotate, no secret to leak.
-
-### Going from `0.x` to `1.0.0`
-
-release-please starts at `0.0.0` and bumps as `0.x.y` until you explicitly graduate. To ship `1.0.0`, add a commit on `main` whose body contains:
-
-```
-Release-As: 1.0.0
-```
-
-Next release-please run will use that exact version.
-
-### Hotfix / out-of-band: manual workflow
-
-Sometimes you want to ship a specific version without waiting for release-please's PR — typically for hotfixes or to recover from a release-please failure.
-
-1. Open Actions → **Release** → **Run workflow**.
-2. Enter a semver version without the leading `v` (e.g. `1.0.0`, or `1.1.0-rc.1` for a pre-release).
-3. Click **Run**.
-
-The manual workflow validates the version, runs `yarn typecheck` + `yarn test`, bumps `version` in root and workspace `package.json` files, commits as `release: v<version>`, creates the immutable tag + moves the major-version pointer, and creates a GitHub Release with auto-generated notes. Pre-releases (versions with a hyphen suffix) are flagged automatically.
-
-### Branch-protection gotcha (applies to both flows)
-
-If `main` is protected, the default `GITHUB_TOKEN` may not be allowed to push the release commit/tag. Either allow `github-actions[bot]` in protection rules, or replace the token in the relevant workflow file with a Personal Access Token secret with `contents: write` permission.
 
 ---
 
