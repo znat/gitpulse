@@ -29,21 +29,26 @@ const SITE_NAME = 'Gitpulse';
  * Resolve the absolute base URL of the deployed site.
  *
  * Priority:
- *   1. `GITPULSE_SITE_URL` (explicit override, required for any non-default
- *      deploy — Vercel, Netlify, user/org Pages, custom domain).
- *   2. `https://{owner}.github.io/{repo}` derived from `GITHUB_REPOSITORY`,
+ *   1. `GITPULSE_SITE_URL` (explicit override).
+ *   2. Auto-detected from the build platform's env vars:
+ *      Vercel  → `VERCEL_PROJECT_PRODUCTION_URL` (prod) / `VERCEL_URL`
+ *      Netlify → `URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`
+ *      Cloudflare Pages → `CF_PAGES_URL`
+ *   3. `https://{owner}.github.io/{repo}` derived from `GITHUB_REPOSITORY`,
  *      but ONLY when `GITPULSE_BASE_PATH` is unset / 'auto' — i.e. the
  *      project-Pages defaults align. If basePath was overridden away from
- *      the default (e.g. 'none' for root, or a custom prefix), the GH Pages
- *      fallback is wrong, so we return empty (path-only canonicals) and
- *      log a warning at build time.
- *   3. Empty string (development / preview).
+ *      the default, the GH Pages fallback is wrong; returns empty
+ *      (path-only canonicals) and logs a warning at build time.
+ *   4. Empty string (development / preview).
  *
  * Mirrors `next.config.js` basePath resolution.
  */
 export function getBaseUrl(): string {
   const explicit = process.env.GITPULSE_SITE_URL?.replace(/\/$/, '');
   if (explicit) return explicit;
+
+  const detected = detectDeployedUrl();
+  if (detected) return detected.replace(/\/$/, '');
 
   const fullName = process.env.GITHUB_REPOSITORY;
   if (!fullName) return '';
@@ -65,6 +70,30 @@ export function getBaseUrl(): string {
   }
 
   return `https://${owner}.github.io/${repo}`;
+}
+
+function detectDeployedUrl(): string | undefined {
+  // Vercel
+  if (process.env.VERCEL) {
+    const host =
+      process.env.VERCEL_ENV === 'production'
+        ? process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.VERCEL_URL
+        : process.env.VERCEL_URL;
+    if (host) return `https://${host}`;
+  }
+  // Netlify
+  if (process.env.NETLIFY === 'true') {
+    return (
+      process.env.URL ||
+      process.env.DEPLOY_PRIME_URL ||
+      process.env.DEPLOY_URL
+    );
+  }
+  // Cloudflare Pages
+  if (process.env.CF_PAGES === '1' && process.env.CF_PAGES_URL) {
+    return process.env.CF_PAGES_URL;
+  }
+  return undefined;
 }
 
 export function canonicalUrl(path: string): string {

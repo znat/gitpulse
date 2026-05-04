@@ -39,7 +39,8 @@ Common analyze env vars (all optional):
   GITPULSE_RELEASES_CAP     Default: 20. Set to 0 to skip releases.
   GITPULSE_INCLUDE_PRERELEASES  Default: true.
   GITPULSE_SITE_URL         Where the deployed site lives (for state restore).
-                            Default: https://<owner>.github.io/<repo>/
+                            Auto-detected on Vercel, Netlify, Cloudflare Pages.
+                            Falls back to https://<owner>.github.io/<repo>/.
 
 Common build env vars (all optional):
   GITPULSE_DATA_DIR         Source of analyzer JSON.    Default: \${PWD}/.gitpulse/data.

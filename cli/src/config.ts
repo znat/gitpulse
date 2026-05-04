@@ -43,7 +43,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
     githubToken: env.GITHUB_TOKEN || undefined,
     // `||` rather than `??` so an empty-string override (common when a CI
     // workflow always sets the env) falls back to autoSiteUrl().
-    siteUrl: env.GITPULSE_SITE_URL || autoSiteUrl(repoFullName),
+    siteUrl: env.GITPULSE_SITE_URL || autoSiteUrl(env, repoFullName),
     releasesCap: Math.max(0, Number(env.GITPULSE_RELEASES_CAP ?? 20)),
     includePrereleases: env.GITPULSE_INCLUDE_PRERELEASES !== 'false',
     ai: {
@@ -56,9 +56,35 @@ export function loadConfig(env = process.env): RuntimeConfig {
   };
 }
 
-function autoSiteUrl(repoFullName: string): string {
+// Auto-detect the deployed site URL from common platform env vars.
+// Priority: Vercel → Netlify → Cloudflare Pages → GH Pages fallback.
+// Always returns a URL ending in '/' so the analyzer can append paths
+// directly (data/manifest.json, etc.).
+function autoSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
+  const detected = detectDeployedUrl(env);
+  if (detected) return detected.endsWith('/') ? detected : `${detected}/`;
   const [owner, repo] = repoFullName.split('/');
   return `https://${owner}.github.io/${repo}/`;
+}
+
+function detectDeployedUrl(env: NodeJS.ProcessEnv): string | undefined {
+  // Vercel: production prefers the stable URL, previews use VERCEL_URL.
+  if (env.VERCEL) {
+    const host =
+      env.VERCEL_ENV === 'production'
+        ? env.VERCEL_PROJECT_PRODUCTION_URL ?? env.VERCEL_URL
+        : env.VERCEL_URL;
+    if (host) return `https://${host}`;
+  }
+  // Netlify: URL is the canonical, DEPLOY_PRIME_URL is branch-specific.
+  if (env.NETLIFY === 'true') {
+    return env.URL || env.DEPLOY_PRIME_URL || env.DEPLOY_URL;
+  }
+  // Cloudflare Pages.
+  if (env.CF_PAGES === '1' && env.CF_PAGES_URL) {
+    return env.CF_PAGES_URL;
+  }
+  return undefined;
 }
 
 function required(env: NodeJS.ProcessEnv, name: string): string {

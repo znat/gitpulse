@@ -84,8 +84,8 @@ In Vercel's **Project Settings → Environment Variables**, set:
 |---|---|
 | `OPENAI_API_KEY` | Your provider key |
 | `GITHUB_TOKEN` | A fine-grained token with `contents: read` on the repo (so the analyzer can fetch PR / release context) |
-| `GITPULSE_BASE_PATH` | `none` (Vercel serves at root, not `/<repo>/`) |
-| `GITPULSE_SITE_URL` | Your production URL (e.g. `https://my.app`) |
+
+The site URL and basePath are **auto-detected** from Vercel's build env (`VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL`); no need to set `GITPULSE_SITE_URL` or `GITPULSE_BASE_PATH` explicitly. Override only if you've connected a custom domain and want canonical links to point at it — set `GITPULSE_SITE_URL=https://my.example.com`.
 
 For Vercel's auto-detection to find `next build` output, make sure the framework preset is "Next.js" and the build output is `out` (or however your `next.config.js` is configured).
 
@@ -100,13 +100,9 @@ Same shape. In `netlify.toml`:
 [build]
   command = "npx -y @gitpulse/cli@0 analyze && npx -y @gitpulse/cli@0 build"
   publish = ".gitpulse/out"
-
-[build.environment]
-  GITPULSE_BASE_PATH = "none"
-  GITPULSE_SITE_URL = "https://my.netlify.app"
 ```
 
-Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables.
+Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables. The site URL is **auto-detected** from Netlify's build env (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`) — only set `GITPULSE_SITE_URL` if you want canonicals to point at a different host than what Netlify reports.
 
 </details>
 
@@ -117,7 +113,7 @@ In the Cloudflare Pages project:
 
 - **Build command**: `npx -y @gitpulse/cli@0 analyze && npx -y @gitpulse/cli@0 build`
 - **Build output directory**: `.gitpulse/out`
-- **Environment variables**: same set as Vercel/Netlify above (`GITPULSE_BASE_PATH=none`, etc.)
+- **Environment variables**: `OPENAI_API_KEY` + `GITHUB_TOKEN`. The site URL is auto-detected from Cloudflare's `CF_PAGES_URL`.
 
 </details>
 
@@ -175,7 +171,7 @@ All config is via environment variables. The CLI has no flags.
 | `GITPULSE_RELEASES_CAP` | `20` | Max releases to process per run. `0` disables the releases pass. |
 | `GITPULSE_INCLUDE_PRERELEASES` | `true` | Include prereleases in the feed. |
 | `GITPULSE_BASE_PATH` | `auto` | `auto` = derive `/<repo>` from `GITHUB_REPOSITORY` (project Pages). `none` = root deployment (Vercel, user/org Pages, custom domain). Or a literal prefix like `/blog`. |
-| `GITPULSE_SITE_URL` | derived | Absolute URL of the deployed site. Required when `GITPULSE_BASE_PATH` isn't `auto` (used for canonical URLs and incremental state restore). |
+| `GITPULSE_SITE_URL` | auto-detected | Absolute URL of the deployed site (used for canonical URLs and incremental state restore). Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. Set explicitly to override for custom domains. |
 | `GITPULSE_DATA_DIR` | `./.gitpulse/data` | Where `analyze` writes JSON. `build` reads from here. |
 | `GITPULSE_OUT_DIR` | `./.gitpulse/out` | Where `build` writes the static site. |
 
