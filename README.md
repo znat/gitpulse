@@ -1,12 +1,10 @@
-# gitpulse
+# Gitpulse
 
-**An editorial story feed for your repo's pull requests and direct pushes — published to GitHub Pages, Vercel, Netlify, or anywhere else you serve a static site.**
+`git log` was never meant for humans.
 
-Every push, gitpulse walks your default branch, classifies each commit, writes a short editorial-style story for each, and rebuilds a static feed at your chosen URL.
+Gitpulse turns your commit history into a beautifully typeset editorial publication — a polished story feed that reads like a magazine, not a terminal. One crafted post per meaningful change, AI-generated and deployed as a static site on every push. No database, no server, no maintenance.
 
-No database. No external services beyond GitHub and your LLM provider.
-
-> See it running on this repo: **https://znat.github.io/gitpulse/**
+> See it live — **[GitHub Pages](https://znat.github.io/gitpulse/)** · **[Vercel](https://gitpulse-demo.vercel.app/)**
 
 ---
 
@@ -64,13 +62,13 @@ That's it. First run bootstraps from the last 30 days of history; subsequent run
 <details>
 <summary><b>Vercel</b> — Vercel-side build (simplest)</summary>
 
-Vercel auto-builds on every push if you connect the repo. Make gitpulse part of that build:
+Vercel auto-builds on every push if you connect the repo. Make Gitpulse part of that build:
 
 ```json
 // package.json
 {
   "scripts": {
-    "build": "gitpulse analyze && gitpulse build && next build"
+    "build": "gitpulse analyze && gitpulse build"
   },
   "devDependencies": {
     "@gitpulse/cli": "^0"
@@ -85,14 +83,14 @@ In Vercel's **Project Settings → Environment Variables**, set:
 | `OPENAI_API_KEY` | Your provider key |
 | `GITHUB_TOKEN` | A fine-grained token with `contents: read` on the repo (so the analyzer can fetch PR / release context) |
 
-That's it. Vercel exposes `VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG` (used to auto-detect `GITHUB_REPOSITORY`) and `VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL` (used to auto-detect `GITPULSE_SITE_URL`); the basePath defaults to `''` because Vercel serves at root. No `GITHUB_REPOSITORY`, `GITPULSE_BASE_PATH`, or `GITPULSE_SITE_URL` to set manually. Override only if you've connected a custom domain and want canonical links to point at it — set `GITPULSE_SITE_URL=https://my.example.com`.
+That's it — Gitpulse auto-detects the repo and site URL from Vercel's environment. Only set `GITPULSE_SITE_URL` if you've connected a custom domain and want canonical links to point at it.
 
-For Vercel's auto-detection to find `next build` output, make sure the framework preset is "Next.js" and the build output is `out` (or however your `next.config.js` is configured).
+If you'd rather keep secrets out of Vercel and run the build in CI, see the **GitHub Actions → Vercel** option below.
 
 </details>
 
 <details>
-<summary><b>Vercel</b> — CI builds, Vercel hosts (zero env vars on Vercel)</summary>
+<summary><b>Vercel</b> — GitHub Actions builds, Vercel hosts (secrets stay in CI)</summary>
 
 If you'd rather keep all secrets in your CI runner and have Vercel act as a pure CDN, run analyze + build in GitHub Actions and ship the prebuilt output via `vercel deploy --prebuilt`. Vercel runs no build, sees no LLM keys, and needs no env vars.
 
