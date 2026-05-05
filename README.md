@@ -25,7 +25,7 @@ State is the deployed site itself. Each run fetches the previous `data/manifest.
 
 > Pre-1.0 — the CLI is at `0.x.y` and consumers pin `@gitpulse/cli@0` (npm) and `znat/gitpulse/.github/workflows/publish-pages.yaml@v0` (workflow). When the API stabilises, both move to `@1` / `@v1`.
 
-You'll need a repository secret `OPENAI_API_KEY` (or whichever provider's key — see [LLM providers](#llm-providers) below).
+You'll need a repository secret `OPENAI_API_KEY` with your LLM provider's API key (see [LLM providers](#llm-providers) for supported providers).
 
 <details open>
 <summary><b>GitHub Pages</b> — one-line reusable workflow</summary>
@@ -240,13 +240,13 @@ Optional file at your repo root. All fields are optional; omit any you don't nee
 
 | Var | What it is |
 |---|---|
-| `OPENAI_API_KEY` | API key for whichever LLM provider you've configured (the env name is fixed, the value can be a MiniMax / OpenRouter / Anthropic / etc. key). |
-| `GITHUB_REPOSITORY` | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel (`VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG`) and Netlify (parsed from `REPOSITORY_URL`); set manually on Cloudflare Pages and other targets. |
+| `OPENAI_API_KEY` | Your LLM provider's API key. The variable name is a fixed convention — the value is whatever key your chosen provider issues (OpenAI, Anthropic, MiniMax, OpenRouter, etc.). |
 
 ### Common optional env vars
 
 | Var | Default | Purpose |
 |---|---|---|
+| `GITHUB_REPOSITORY` | auto-detected | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel and Netlify. Set manually on Cloudflare Pages and other targets. |
 | `GITHUB_TOKEN` | (none) | Enables PR / release context lookups via GraphQL. Without it, every commit is treated as a direct push. |
 | `AI_MODEL` | `gpt-4o-mini` | Model id used for story generation. |
 | `AI_PROTOCOL` | `openai` | `openai` or `anthropic`. |
