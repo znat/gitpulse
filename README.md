@@ -4,7 +4,7 @@
 
 Gitpulse turns your commit history into a beautifully typeset editorial publication — a polished story feed that reads like a magazine, not a terminal. One crafted post per meaningful change, AI-generated and deployed as a static site on every push. No database, no server, no maintenance.
 
-A changelog your whole team will actually read — engineers, product, design, and leadership, all in the loop on what's shipping without anyone needing to open a terminal.
+A changelog your whole team will actually read — engineers, product, design, and leadership, all in the loop on what's shipping without anyone needing to open a terminal, read GitHub PRs, or book a meeting.
 
 > See it live — **[GitHub Pages](https://znat.github.io/gitpulse/)** · **[Vercel](https://gitpulse-demo.vercel.app/)**
 
