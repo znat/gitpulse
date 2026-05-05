@@ -213,16 +213,35 @@ The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever
 
 ## Configuration
 
-All config is via environment variables. The CLI has no flags.
+Configuration is split by concern:
 
-### Required
+- **Secrets and operational settings** — environment variables (never committed).
+- **Publication settings** — `.gitpulse.json` at the root of your repo (safe to commit).
+
+### `.gitpulse.json`
+
+Optional file at your repo root. All fields are optional; omit any you don't need.
+
+```json
+{
+  "publicationTitle": "The Acme Dispatch",
+  "publicationSubtitle": "Engineering updates from the Acme team"
+}
+```
+
+| Field | Default | Purpose |
+|---|---|---|
+| `publicationTitle` | `The <Repo> Conversation` | Name shown in the feed header, top bar, and page title. |
+| `publicationSubtitle` | `<owner>/<repo> · Development Activity Intelligence` | Subtitle shown below the feed header. |
+
+### Required env vars
 
 | Var | What it is |
 |---|---|
 | `OPENAI_API_KEY` | API key for whichever LLM provider you've configured (the env name is fixed, the value can be a MiniMax / OpenRouter / Anthropic / etc. key). |
 | `GITHUB_REPOSITORY` | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel (`VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG`) and Netlify (parsed from `REPOSITORY_URL`); set manually on Cloudflare Pages and other targets. |
 
-### Common (optional)
+### Common optional env vars
 
 | Var | Default | Purpose |
 |---|---|---|
