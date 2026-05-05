@@ -12,6 +12,8 @@ export interface RuntimeConfig {
   siteUrl: string;
   releasesCap: number;
   includePrereleases: boolean;
+  publicationTitle?: string;
+  publicationSubtitle?: string;
   ai: {
     apiKey: string;
     model: string;
@@ -20,6 +22,8 @@ export interface RuntimeConfig {
     temperature: number;
   };
 }
+
+import { loadProjectConfig } from './project-config.ts';
 
 export function loadConfig(env = process.env): RuntimeConfig {
   const repoFullName =
@@ -48,6 +52,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
   // (analyze → build) wires together without GITPULSE_DATA_DIR.
   // self-deploy.yml overrides this explicitly to site/public/data.
   const dataDir = env.GITPULSE_DATA_DIR ?? `${repoDir}/.gitpulse/data`;
+  const projectConfig = loadProjectConfig(repoDir);
 
   return {
     repoDir,
@@ -56,13 +61,15 @@ export function loadConfig(env = process.env): RuntimeConfig {
     storiesDir: env.GITPULSE_STORIES_DIR ?? `${dataDir}/stories`,
     releasesDir: env.GITPULSE_RELEASES_DIR ?? `${dataDir}/releases`,
     branch: env.GITPULSE_BRANCH || undefined,
-    bootstrapDays: Number(env.GITPULSE_BOOTSTRAP_DAYS ?? 30),
+    bootstrapDays: projectConfig.bootstrapDays ?? 30,
     limit: env.GITPULSE_LIMIT ? Number(env.GITPULSE_LIMIT) : undefined,
-    concurrency: Math.max(1, Number(env.GITPULSE_CONCURRENCY ?? 10)),
+    concurrency: Math.max(1, projectConfig.concurrency ?? 10),
     githubToken: env.GITHUB_TOKEN || undefined,
     siteUrl: resolveSiteUrl(env, repoFullName),
-    releasesCap: Math.max(0, Number(env.GITPULSE_RELEASES_CAP ?? 20)),
-    includePrereleases: env.GITPULSE_INCLUDE_PRERELEASES !== 'false',
+    releasesCap: Math.max(0, projectConfig.releasesCap ?? 20),
+    includePrereleases: projectConfig.includePrereleases ?? true,
+    publicationTitle: projectConfig.publicationTitle,
+    publicationSubtitle: projectConfig.publicationSubtitle,
     ai: {
       apiKey,
       model: env.AI_MODEL ?? 'gpt-4o-mini',

@@ -38,7 +38,6 @@ import {
 } from './release-builder.ts';
 import { encodeFilename, writeRelease } from './release-render.ts';
 import { createReleaseEditor, getFallbackEdition } from './release-llm.ts';
-import { loadProjectConfig } from './project-config.ts';
 import type { CommitRecord, Release, Story } from './types.ts';
 
 export interface AnalyzerResult {
@@ -83,12 +82,12 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
   // Fetch + persist repo metadata.
   const gh = cfg.githubToken ? new GitHubClient(cfg.githubToken) : null;
   const { owner, repo } = parseRepoFullName(cfg.repoFullName);
-  const projectConfig = loadProjectConfig(cfg.repoDir);
   const repoInfo: RepoInfo = {
     ...(gh
       ? await gh.fetchRepo(owner, repo)
       : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` }),
-    ...projectConfig,
+    publicationTitle: cfg.publicationTitle,
+    publicationSubtitle: cfg.publicationSubtitle,
   };
   writeJson(`${cfg.dataDir}/repo.json`, repoInfo);
 

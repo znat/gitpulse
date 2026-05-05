@@ -5,6 +5,10 @@ import { z } from 'zod';
 const ProjectConfigSchema = z.strictObject({
   publicationTitle: z.string().trim().min(1).optional(),
   publicationSubtitle: z.string().trim().min(1).optional(),
+  bootstrapDays: z.number().int().positive().optional(),
+  concurrency: z.number().int().min(1).optional(),
+  releasesCap: z.number().int().min(0).optional(),
+  includePrereleases: z.boolean().optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
