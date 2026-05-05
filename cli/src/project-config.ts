@@ -2,9 +2,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-const ProjectConfigSchema = z.object({
-  publicationTitle: z.string().optional(),
-  publicationSubtitle: z.string().optional(),
+const ProjectConfigSchema = z.strictObject({
+  publicationTitle: z.string().trim().min(1).optional(),
+  publicationSubtitle: z.string().trim().min(1).optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
