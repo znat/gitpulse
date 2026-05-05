@@ -32,7 +32,7 @@ export function loadProjectConfig(repoDir: string): ProjectConfig {
   const result = ProjectConfigSchema.safeParse(parsed);
   if (!result.success) {
     throw new Error(
-      `[gitpulse] ${configPath} is invalid: ${result.error.issues.map((i) => i.message).join(', ')}`,
+      `[gitpulse] ${configPath} is invalid: ${result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', ')}`,
     );
   }
 
