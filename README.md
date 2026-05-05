@@ -10,20 +10,9 @@ A changelog your whole team will actually read — engineers, product, design, a
 
 ---
 
-## How it works
-
-Two pieces:
-
-1. **`@gitpulse/cli`** — a tiny CLI on npm with two subcommands:
-   - `gitpulse analyze` walks git history, calls an LLM for each new commit, writes JSON to `./.gitpulse/data/`.
-   - `gitpulse build` clones the matching gitpulse site at runtime, injects your data, runs `next export`, writes a static site to `./.gitpulse/out/`.
-2. **A static deploy** — Pages, Vercel, Netlify, S3, whatever serves HTML.
-
-State is the deployed site itself. Each run fetches the previous `data/manifest.json` from your live URL, picks up where it left off, and only analyzes new commits. No database, no separate branch, no artifact chain.
-
----
-
 ## Quickstart
+
+A tiny CLI (`@gitpulse/cli`) runs in your CI pipeline, analyzes new commits, and builds a static site. Deploy it anywhere that serves HTML. No infrastructure, no database.
 
 > Pre-1.0 — the CLI is at `0.x.y` and consumers pin `@gitpulse/cli@0` (npm) and `znat/gitpulse/.github/workflows/publish-pages.yaml@v0` (workflow). When the API stabilises, both move to `@1` / `@v1`.
 
