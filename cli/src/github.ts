@@ -5,6 +5,8 @@ export interface RepoInfo {
   repo: string;
   description: string;
   url: string;
+  publicationTitle?: string;
+  publicationSubtitle?: string;
 }
 
 export interface PRData {

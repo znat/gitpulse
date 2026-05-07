@@ -213,16 +213,39 @@ The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever
 
 ## Configuration
 
-All config is via environment variables. The CLI has no flags.
+Configuration is split by concern:
 
-### Required
+- **Secrets and operational settings** — environment variables (never committed).
+- **Publication settings** — `.gitpulse.json` at the root of your repo (safe to commit).
+
+### `.gitpulse.json`
+
+Optional file at your repo root. All fields are optional; omit any you don't need.
+
+```json
+{
+  "publicationTitle": "The Acme Dispatch",
+  "publicationSubtitle": "Engineering updates from the Acme team"
+}
+```
+
+| Field | Default | Purpose |
+|---|---|---|
+| `publicationTitle` | `The <Repo> Conversation` | Name shown in the feed header, top bar, and page title. |
+| `publicationSubtitle` | `<owner>/<repo> · Development Activity Intelligence` | Subtitle shown below the feed header. |
+| `bootstrapDays` | `30` | First-run history window in days. |
+| `concurrency` | `10` | Parallel commit analysis. Bound by your provider's rate limits. |
+| `releasesCap` | `20` | Max releases to process per run. `0` disables the releases pass. |
+| `includePrereleases` | `true` | Include prereleases in the feed. |
+
+### Required env vars (when not auto-detected)
 
 | Var | What it is |
 |---|---|
 | `OPENAI_API_KEY` | API key for whichever LLM provider you've configured (the env name is fixed, the value can be a MiniMax / OpenRouter / Anthropic / etc. key). |
 | `GITHUB_REPOSITORY` | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel (`VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG`) and Netlify (parsed from `REPOSITORY_URL`); set manually on Cloudflare Pages and other targets. |
 
-### Common (optional)
+### Common optional env vars
 
 | Var | Default | Purpose |
 |---|---|---|
@@ -231,10 +254,6 @@ All config is via environment variables. The CLI has no flags.
 | `AI_PROTOCOL` | `openai` | `openai` or `anthropic`. |
 | `AI_BASE_URL` | (default OpenAI) | For OpenAI-compatible providers. See [LLM providers](#llm-providers). |
 | `AI_TEMPERATURE` | `0` | Sampling temperature. |
-| `GITPULSE_BOOTSTRAP_DAYS` | `30` | First-run history window in days. |
-| `GITPULSE_CONCURRENCY` | `10` | Parallel commit analysis. Bound by your provider's rate limits. |
-| `GITPULSE_RELEASES_CAP` | `20` | Max releases to process per run. `0` disables the releases pass. |
-| `GITPULSE_INCLUDE_PRERELEASES` | `true` | Include prereleases in the feed. |
 | `GITPULSE_BASE_PATH` | `auto` | `auto` = derive `/<repo>` from `GITHUB_REPOSITORY` (project Pages). `none` = root deployment (Vercel, user/org Pages, custom domain). Or a literal prefix like `/blog`. |
 | `GITPULSE_SITE_URL` | auto-detected | Absolute URL of the deployed site (used for canonical URLs and incremental state restore). Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. Set explicitly to override for custom domains. |
 | `GITPULSE_DATA_DIR` | `./.gitpulse/data` | Where `analyze` writes JSON. `build` reads from here. |

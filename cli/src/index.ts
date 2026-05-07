@@ -82,9 +82,13 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
   // Fetch + persist repo metadata.
   const gh = cfg.githubToken ? new GitHubClient(cfg.githubToken) : null;
   const { owner, repo } = parseRepoFullName(cfg.repoFullName);
-  const repoInfo: RepoInfo = gh
-    ? await gh.fetchRepo(owner, repo)
-    : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` };
+  const repoInfo: RepoInfo = {
+    ...(gh
+      ? await gh.fetchRepo(owner, repo)
+      : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` }),
+    publicationTitle: cfg.publicationTitle,
+    publicationSubtitle: cfg.publicationSubtitle,
+  };
   writeJson(`${cfg.dataDir}/repo.json`, repoInfo);
 
   // Backfill prTitle for restored PR stories that predate the field.

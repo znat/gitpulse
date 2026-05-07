@@ -6,6 +6,8 @@ export interface RepoInfo {
   repo: string;
   description: string;
   url: string;
+  publicationTitle?: string;
+  publicationSubtitle?: string;
 }
 
 const REPO_PATH = join(process.cwd(), 'public/data/repo.json');
@@ -31,9 +33,9 @@ function capitalize(s: string): string {
 }
 
 export function publicationName(repo: RepoInfo): string {
-  return `The ${capitalize(repo.repo)} Conversation`;
+  return repo.publicationTitle ?? `The ${capitalize(repo.repo)} Conversation`;
 }
 
 export function publicationSubtitle(repo: RepoInfo): string {
-  return `${repo.owner}/${repo.repo} · Development Activity Intelligence`;
+  return repo.publicationSubtitle ?? `${repo.owner}/${repo.repo} · Development Activity Intelligence`;
 }
