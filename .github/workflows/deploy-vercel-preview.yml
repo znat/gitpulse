@@ -1,0 +1,103 @@
+name: Deploy PR Preview to Vercel
+
+# Ephemeral preview deployments for PRs. Mirrors deploy-vercel.yml's
+# build pipeline but:
+#   1. Triggers on PRs (same-repo branches only — fork PRs are skipped
+#      because pull_request doesn't expose secrets to forks).
+#   2. Builds the in-repo CLI from the PR's source instead of installing
+#      the published @gitpulse/cli@0 — so CLI changes in the PR are
+#      actually exercised by the preview.
+#   3. Drops --prod from `vercel deploy --prebuilt`, which produces a
+#      unique preview URL per build. Vercel auto-expires preview
+#      deployments per the project's retention policy, so no cleanup
+#      step is needed.
+#
+# The preview URL is posted back as a sticky PR comment (one comment
+# that updates in place, not one per push).
+#
+# Reuses the existing VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID
+# secrets and MINIMAX_API_KEY from deploy-vercel.yml. No new secrets.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  # Newer pushes to the same PR cancel any in-flight preview build —
+  # only the latest commit's preview is interesting.
+  group: gitpulse-vercel-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    # Skip fork PRs — secrets aren't available under pull_request anyway.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install + build in-repo CLI
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @gitpulse/cli build
+
+      - name: Analyze (in-repo CLI)
+        run: node cli/dist/cli.js analyze
+        env:
+          AI_PROTOCOL: openai
+          AI_BASE_URL: https://api.minimax.io/v1
+          AI_MODEL: MiniMax-M2.7
+          # Restore analyzer state from prod so PR runs are incremental,
+          # not a full re-analysis. Canonical meta will point to prod —
+          # acceptable for ephemeral previews.
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
+          OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build site (in-repo CLI)
+        run: node cli/dist/cli.js build
+        env:
+          GITPULSE_BASE_PATH: none
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
+
+      - name: Stage prebuilt output for Vercel
+        # Vercel's --prebuilt flag expects this exact directory layout.
+        # https://vercel.com/docs/build-output-api/v3
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel/output/static
+          cp -RT .gitpulse/out .vercel/output/static
+          cat > .vercel/output/config.json <<'EOF'
+          { "version": 3 }
+          EOF
+
+      - name: Deploy preview to Vercel
+        id: deploy
+        run: |
+          set -euo pipefail
+          npm install -g vercel@latest
+          URL=$(vercel deploy --prebuilt --yes --token="$VERCEL_TOKEN")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Comment preview URL on PR (sticky)
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: vercel-preview
+          message: |
+            **Vercel preview** — built from `${{ github.event.pull_request.head.sha }}`
+
+            ${{ steps.deploy.outputs.url }}
