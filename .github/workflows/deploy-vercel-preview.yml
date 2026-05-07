@@ -99,6 +99,7 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       - name: Comment preview URL on PR (sticky)
+        if: success()
         # Pinned to a commit SHA — Dependabot rotates it (see
         # .github/dependabot.yml). Same convention as
         # lint-pr-title.yml's amannn/action-semantic-pull-request pin.
@@ -109,3 +110,15 @@ jobs:
             **Vercel preview** — built from `${{ github.event.pull_request.head.sha }}`
 
             ${{ steps.deploy.outputs.url }}
+
+      - name: Comment deploy failure on PR (sticky)
+        # Same sticky header overwrites the success comment so reviewers
+        # don't see a stale preview URL pointing at an older commit.
+        if: failure()
+        uses: marocchino/sticky-pull-request-comment@773744901bac0e8cbb5a0dc842800d45e9b2b405  # v2.9.4
+        with:
+          header: vercel-preview
+          message: |
+            **Vercel preview failed** for `${{ github.event.pull_request.head.sha }}`
+
+            See the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
