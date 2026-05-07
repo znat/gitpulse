@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.5](https://github.com/znat/gitpulse/compare/v0.1.4...v0.1.5) (2026-05-07)
+
+
+### Features
+
+* add .gitpulse.json config file for publication title and subtitle ([#41](https://github.com/znat/gitpulse/issues/41)) ([81c302d](https://github.com/znat/gitpulse/commit/81c302d09949f48afb77fcb86d8f9c29f8540b6e))
+
 ## [0.1.4](https://github.com/znat/gitpulse/compare/v0.1.3...v0.1.4) (2026-05-04)
 
 
