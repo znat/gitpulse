@@ -238,7 +238,7 @@ Optional file at your repo root. All fields are optional; omit any you don't nee
 | `releasesCap` | `20` | Max releases to process per run. `0` disables the releases pass. |
 | `includePrereleases` | `true` | Include prereleases in the feed. |
 
-### Required env vars
+### Required env vars (when not auto-detected)
 
 | Var | What it is |
 |---|---|

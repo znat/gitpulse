@@ -1,3 +1,5 @@
+import { loadProjectConfig } from './project-config.ts';
+
 export interface RuntimeConfig {
   repoDir: string;
   repoFullName: string;
@@ -22,8 +24,6 @@ export interface RuntimeConfig {
     temperature: number;
   };
 }
-
-import { loadProjectConfig } from './project-config.ts';
 
 export function loadConfig(env = process.env): RuntimeConfig {
   const repoFullName =
