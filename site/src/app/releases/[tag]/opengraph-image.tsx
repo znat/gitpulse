@@ -14,6 +14,10 @@ const EMPTY_STUB_TAG = '__no_releases_yet__';
 // `params` object. Pre-encoding here would double-encode tags that contain
 // special characters (e.g. 'release/v1.0.0').
 export function generateStaticParams() {
+  // See commit/[sha]/[slug]/opengraph-image.tsx for the rationale.
+  if (process.env.GITPULSE_PASSWORD) {
+    return [{ tag: EMPTY_STUB_TAG }];
+  }
   const releases = loadReleases();
   if (releases.length === 0) {
     return [{ tag: EMPTY_STUB_TAG }];

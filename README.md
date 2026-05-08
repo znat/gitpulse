@@ -247,6 +247,7 @@ Optional file at your repo root. All fields are optional; omit any you don't nee
 | `GITPULSE_SITE_URL` | auto-detected | Absolute URL of the deployed site (used for canonical URLs and incremental state restore). Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. Set explicitly to override for custom domains. |
 | `GITPULSE_DATA_DIR` | `./.gitpulse/data` | Where `analyze` writes JSON. `build` reads from here. |
 | `GITPULSE_OUT_DIR` | `./.gitpulse/out` | Where `build` writes the static site. |
+| `GITPULSE_PASSWORD` | (none) | If set, the published site is encrypted end-to-end and visitors must enter the password to read. See [Password protection](#password-protection). |
 
 ### LLM providers
 
@@ -340,6 +341,27 @@ OPENAI_API_KEY=<your anthropic key>
 `AI_BASE_URL` isn't needed — uses Anthropic's default endpoint.
 
 </details>
+
+---
+
+## Password protection
+
+Set `GITPULSE_PASSWORD` in the build environment and the published site is encrypted end-to-end — every page and every JSON data file. Readers see a single unlock screen the first time they visit; the rest of the publication reads as normal afterwards. Works on any static host (Vercel, GitHub Pages, Netlify, Cloudflare Pages) — the protection lives in the static files, not in the host.
+
+Crypto: PBKDF2-SHA256 (600 000 iterations) → AES-GCM 256 via the browser's Web Crypto. The password never ships to the client; only its derivative key material does. AES-GCM authenticates every decrypt, so a wrong password is rejected loudly, not silently.
+
+What changes when the variable is set:
+
+- Every emitted `.html` is replaced with a small unlock shell that decrypts the original document client-side after the password is entered.
+- Every `data/**/*.json` becomes an `{iv, ct}` envelope; the runtime decrypts as it fetches.
+- `opengraph-image*.png`, `sitemap.xml`, and Next's RSC navigation `.txt` payloads are deleted post-build so they can't leak rendered story content.
+- `robots.txt` is overwritten with `Disallow: /`.
+
+After unlock, readers can opt into "remember on this device" — the derived key is cached in `localStorage` so subsequent visits skip the prompt. Same password yields the same key across rebuilds, so the cache stays valid through redeploys and is invalidated automatically when you rotate the password. Without the opt-in, the key lives only for the tab session.
+
+**Incremental builds.** `gitpulse analyze` fetches the previous deployment's state to know which commits it has already covered. For protected sites it also needs `GITPULSE_PASSWORD` (same value) to decrypt that state — wire the same env var into both the analyze and the build steps. A wrong password aborts with a clear error rather than silently re-bootstrapping from scratch.
+
+**Caveats.** Lose the password and the published archive is unreadable — keep a copy in a password manager and your CI secret store. Toggling protection on or off requires a fresh build and a CDN cache purge so old plaintext copies don't linger. The `_next/static/*` JavaScript bundles remain plaintext (framework code, no story data); only the publication content is encrypted. Story URLs (`/commit/<sha>/<slug>/`, `/pull/<n>/<slug>/`) keep their slug suffix in both modes — the URL path leaks headline-derived words but no protected data.
 
 ---
 

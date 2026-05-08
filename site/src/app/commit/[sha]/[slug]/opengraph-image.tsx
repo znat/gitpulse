@@ -18,6 +18,13 @@ const EMPTY_STUB_SHA = '__no_stories_yet__';
 const EMPTY_STUB_SLUG = 'placeholder';
 
 export function generateStaticParams() {
+  // Skip OG generation when the publication is encrypted: the rendered PNGs
+  // would be deleted post-build anyway, and AI-generated image features
+  // (future) make rendering-then-deleting expensive. The stub satisfies
+  // Next's `output: 'export'` requirement of a non-empty params list.
+  if (process.env.GITPULSE_PASSWORD) {
+    return [{ sha: EMPTY_STUB_SHA, slug: EMPTY_STUB_SLUG }];
+  }
   const stories = loadStories().filter((s) => s.kind === 'direct-push');
   if (stories.length === 0) {
     return [{ sha: EMPTY_STUB_SHA, slug: EMPTY_STUB_SLUG }];

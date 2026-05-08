@@ -18,6 +18,10 @@ const EMPTY_STUB_NUMBER = '__no_stories_yet__';
 const EMPTY_STUB_SLUG = 'placeholder';
 
 export function generateStaticParams() {
+  // See commit/[sha]/[slug]/opengraph-image.tsx for the rationale.
+  if (process.env.GITPULSE_PASSWORD) {
+    return [{ number: EMPTY_STUB_NUMBER, slug: EMPTY_STUB_SLUG }];
+  }
   const stories = loadStories().filter((s) => s.kind === 'pr' && typeof s.prNumber === 'number');
   if (stories.length === 0) {
     return [{ number: EMPTY_STUB_NUMBER, slug: EMPTY_STUB_SLUG }];

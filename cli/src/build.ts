@@ -139,12 +139,20 @@ const EXPLICIT_SECRET_KEYS = new Set([
   'AWS_SESSION_TOKEN',
 ]);
 const SECRET_NAME_PATTERN = /(?:_TOKEN|_SECRET|_PASSWORD|_API_KEY)$/i;
+// Vars that look like secrets by name but are intentionally needed by the
+// cloned site build. GITPULSE_PASSWORD seeds the encryption keystream and
+// must reach `next build` for protected publications to work.
+const EXPLICIT_PASSTHROUGH_KEYS = new Set(['GITPULSE_PASSWORD']);
 
-function sanitizeEnvForClonedBuild(
+export function sanitizeEnvForClonedBuild(
   env: NodeJS.ProcessEnv,
 ): NodeJS.ProcessEnv {
   const out: NodeJS.ProcessEnv = {};
   for (const [k, v] of Object.entries(env)) {
+    if (EXPLICIT_PASSTHROUGH_KEYS.has(k)) {
+      out[k] = v;
+      continue;
+    }
     if (EXPLICIT_SECRET_KEYS.has(k)) continue;
     if (SECRET_NAME_PATTERN.test(k)) continue;
     out[k] = v;

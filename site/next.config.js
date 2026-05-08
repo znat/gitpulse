@@ -31,6 +31,7 @@ const nextConfig = {
   reactStrictMode: true,
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
+    NEXT_PUBLIC_GITPULSE_ENCRYPTED: process.env.GITPULSE_PASSWORD ? '1' : '',
   },
 };
 

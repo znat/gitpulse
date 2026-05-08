@@ -19,6 +19,7 @@ import { assessPRSize } from './size.ts';
 import { pMap } from './pmap.ts';
 import {
   SiteFetcher,
+  WrongGitpulsePasswordError,
   readAllStories,
   readAllReleases,
 } from './site-fetcher.ts';
@@ -62,9 +63,23 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
   console.log(`[gitpulse] site.url=${cfg.siteUrl}`);
   console.log(`[gitpulse] concurrency=${cfg.concurrency}`);
 
-  // Restore prior content from the deployed site.
-  const fetcher = new SiteFetcher(cfg.siteUrl);
-  const priorManifest = await fetcher.fetchManifest();
+  // Restore prior content from the deployed site. When the site is password-
+  // protected, the fetcher uses GITPULSE_PASSWORD to decrypt envelopes
+  // transparently — without it, manifest/state would come back as ciphertext
+  // and incremental analysis would silently re-bootstrap each run.
+  const fetcher = new SiteFetcher(cfg.siteUrl, {
+    password: process.env.GITPULSE_PASSWORD,
+  });
+  let priorManifest: Awaited<ReturnType<typeof fetcher.fetchManifest>>;
+  try {
+    priorManifest = await fetcher.fetchManifest();
+  } catch (err) {
+    if (err instanceof WrongGitpulsePasswordError) {
+      console.error(`[gitpulse] ${err.message}`);
+      process.exit(1);
+    }
+    throw err;
+  }
   const seenSha = new Set<string>();
   if (priorManifest) {
     console.log(`[gitpulse] prior manifest: ${priorManifest.entries.length} entries`);
