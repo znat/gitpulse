@@ -6,7 +6,7 @@ Gitpulse turns your commit history into a beautifully typeset editorial publicat
 
 A changelog your whole team will actually read — engineers, product, design, and leadership, all in the loop on what's shipping without anyone needing to open a terminal, read GitHub PRs, or book a meeting.
 
-> See it live — **[GitHub Pages](https://znat.github.io/gitpulse/)** · **[Vercel](https://gitpulse-demo.vercel.app/)**
+> See it live — **[GitHub Pages](https://znat.github.io/gitpulse/)** · **[Vercel](https://gitpulse-demo.vercel.app/)** · **[Vercel (password-protected mirror)](https://gitpulse-demo-password-protected.vercel.app/)** — password: `gitpulse`
 
 ---
 
