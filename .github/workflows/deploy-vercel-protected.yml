@@ -1,0 +1,93 @@
+name: Deploy Protected Mirror to Vercel
+
+# Mirror of deploy-vercel.yml that exercises the password-protected
+# build path end-to-end. Same source, same analyze pipeline, but
+# GITPULSE_PASSWORD is set so encrypt.mjs runs at build time and the
+# Vercel project at gitpulse-demo-password-protected.vercel.app serves
+# the encrypted output.
+#
+# Runs alongside (not instead of) deploy-vercel.yml — both deploys
+# trigger on the same events so the unprotected and protected mirrors
+# stay in lockstep, which is what catches regressions in the
+# encryption pipeline.
+#
+# One-time setup:
+#   1. Create a separate Vercel project pointing at the same repo with
+#      "Import Git Repository" skipped (CI handles deploys).
+#   2. Add these repo SECRETS (Settings → Secrets and variables →
+#      Actions → New repository secret):
+#        VERCEL_PROTECTED_PROJECT_ID — Project → Settings → General →
+#                                      Project ID for the protected
+#                                      mirror project
+#        GITPULSE_PASSWORD          — chosen unlock password
+#      Reuses the existing VERCEL_TOKEN, VERCEL_ORG_ID, and
+#      MINIMAX_API_KEY secrets from deploy-vercel.yml.
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Independent of the unprotected deploy's concurrency group so they
+  # don't queue against each other.
+  group: gitpulse-vercel-protected
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Analyze (gitpulse analyze)
+        run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
+        env:
+          AI_PROTOCOL: openai
+          AI_BASE_URL: https://api.minimax.io/v1
+          AI_MODEL: MiniMax-M2.7
+          GITPULSE_SITE_URL: https://gitpulse-demo-password-protected.vercel.app/
+          # GITPULSE_PASSWORD is required here so the analyzer can
+          # decrypt prior state fetched from the deployed protected
+          # site — without it, every run would silently re-bootstrap.
+          GITPULSE_PASSWORD: ${{ secrets.GITPULSE_PASSWORD }}
+          OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build site (gitpulse build)
+        run: gitpulse build
+        env:
+          GITPULSE_BASE_PATH: none
+          GITPULSE_SITE_URL: https://gitpulse-demo-password-protected.vercel.app/
+          # When set, encrypt.mjs runs at the end of `next build` and
+          # the static export ships as ciphertext.
+          GITPULSE_PASSWORD: ${{ secrets.GITPULSE_PASSWORD }}
+
+      - name: Stage prebuilt output for Vercel
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel/output/static
+          cp -RT .gitpulse/out .vercel/output/static
+          cat > .vercel/output/config.json <<'EOF'
+          { "version": 3 }
+          EOF
+
+      - name: Deploy to Vercel (protected project)
+        run: |
+          npm install -g vercel@latest
+          vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROTECTED_PROJECT_ID }}
