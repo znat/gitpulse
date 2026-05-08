@@ -6,10 +6,12 @@ name: Deploy Protected Mirror to Vercel
 # Vercel project at gitpulse-demo-password-protected.vercel.app serves
 # the encrypted output.
 #
-# Runs alongside (not instead of) deploy-vercel.yml — both deploys
-# trigger on the same events so the unprotected and protected mirrors
-# stay in lockstep, which is what catches regressions in the
-# encryption pipeline.
+# Builds the *in-repo* cli + site (not the published @gitpulse/cli@0
+# and the @v<cli-version> site clone): the published site predates
+# this branch's encrypt.mjs, so a published-cli build would silently
+# ship plaintext. Using in-repo source pins the protected mirror to
+# whatever encryption pipeline is on this branch — exactly what we
+# want for regression detection.
 #
 # One-time setup:
 #   1. Create a separate Vercel project pointing at the same repo with
@@ -34,8 +36,6 @@ permissions:
   contents: read
 
 concurrency:
-  # Independent of the unprotected deploy's concurrency group so they
-  # don't queue against each other.
   group: gitpulse-vercel-protected
   cancel-in-progress: false
 
@@ -50,38 +50,50 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
+          cache: yarn
 
-      - name: Analyze (gitpulse analyze)
-        run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
+      - name: Install + build in-repo CLI
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @gitpulse/cli build
+
+      - name: Analyze (in-repo CLI)
+        run: node cli/dist/cli.js analyze
         env:
           AI_PROTOCOL: openai
           AI_BASE_URL: https://api.minimax.io/v1
           AI_MODEL: MiniMax-M2.7
-          # Restore state from the *unprotected* mirror — stories are
-          # a function of git history, identical between the two
-          # deployments, so the manifest fetched here is correct for
-          # this build too. Avoids a chicken-and-egg on first deploy
-          # (no protected manifest yet) and lets us use a published
-          # cli that doesn't yet ship decrypt support. Same source as
-          # the unprotected preview workflow.
+          # Restore state from the unprotected mirror — stories are a
+          # function of git history, identical between deployments, so
+          # the manifest fetched here is correct for this build too.
+          # Avoids a chicken-and-egg on first deploy + a coupling to
+          # the published cli's decrypt support.
           GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
           OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build site (gitpulse build)
-        run: gitpulse build
+      - name: Stage analyzer output for the in-repo site
+        # gitpulse build's clone-and-build flow injects this path; we
+        # do it inline since we're skipping the clone.
+        run: |
+          set -euo pipefail
+          mkdir -p site/public/data
+          cp -RT .gitpulse/data site/public/data
+
+      - name: Build site (in-repo, encrypted)
+        run: yarn workspace @gitpulse/site build
         env:
           GITPULSE_BASE_PATH: none
+          # Canonical URL for the protected mirror's <meta> tags.
           GITPULSE_SITE_URL: https://gitpulse-demo-password-protected.vercel.app/
-          # When set, encrypt.mjs runs at the end of `next build` and
-          # the static export ships as ciphertext.
+          # Triggers encrypt.mjs at the end of `next build`.
           GITPULSE_PASSWORD: ${{ secrets.GITPULSE_PASSWORD }}
 
       - name: Stage prebuilt output for Vercel
         run: |
           set -euo pipefail
           mkdir -p .vercel/output/static
-          cp -RT .gitpulse/out .vercel/output/static
+          cp -RT site/out .vercel/output/static
           cat > .vercel/output/config.json <<'EOF'
           { "version": 3 }
           EOF
