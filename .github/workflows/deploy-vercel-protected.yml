@@ -57,11 +57,14 @@ jobs:
           AI_PROTOCOL: openai
           AI_BASE_URL: https://api.minimax.io/v1
           AI_MODEL: MiniMax-M2.7
-          GITPULSE_SITE_URL: https://gitpulse-demo-password-protected.vercel.app/
-          # GITPULSE_PASSWORD is required here so the analyzer can
-          # decrypt prior state fetched from the deployed protected
-          # site — without it, every run would silently re-bootstrap.
-          GITPULSE_PASSWORD: ${{ secrets.GITPULSE_PASSWORD }}
+          # Restore state from the *unprotected* mirror — stories are
+          # a function of git history, identical between the two
+          # deployments, so the manifest fetched here is correct for
+          # this build too. Avoids a chicken-and-egg on first deploy
+          # (no protected manifest yet) and lets us use a published
+          # cli that doesn't yet ship decrypt support. Same source as
+          # the unprotected preview workflow.
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
           OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -48,10 +48,13 @@ jobs:
           AI_PROTOCOL: openai
           AI_BASE_URL: https://api.minimax.io/v1
           AI_MODEL: MiniMax-M2.7
-          # Restore from the protected mirror's prod state. Requires
-          # GITPULSE_PASSWORD so the analyzer can decrypt the envelope.
-          GITPULSE_SITE_URL: https://gitpulse-demo-password-protected.vercel.app/
-          GITPULSE_PASSWORD: ${{ secrets.GITPULSE_PASSWORD }}
+          # Restore state from the unprotected mirror — stories are a
+          # function of git history, so fetching from either deployment
+          # gives an identical manifest. Same source as the unprotected
+          # preview workflow; sidesteps the chicken-and-egg of needing
+          # a protected deploy to exist before this preview can run
+          # incrementally.
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
           OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
