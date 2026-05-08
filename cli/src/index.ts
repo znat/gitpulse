@@ -76,7 +76,6 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
   } catch (err) {
     if (err instanceof WrongGitpulsePasswordError) {
       console.error(`[gitpulse] ${err.message}`);
-      process.exit(1);
     }
     throw err;
   }

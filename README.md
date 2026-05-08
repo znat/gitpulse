@@ -361,7 +361,7 @@ After unlock, readers can opt into "remember on this device" — the derived key
 
 **Incremental builds.** `gitpulse analyze` fetches the previous deployment's state to know which commits it has already covered. For protected sites it also needs `GITPULSE_PASSWORD` (same value) to decrypt that state — wire the same env var into both the analyze and the build steps. A wrong password aborts with a clear error rather than silently re-bootstrapping from scratch.
 
-**Caveats.** Lose the password and the published archive is unreadable — keep a copy in a password manager and your CI secret store. Toggling protection on or off requires a fresh build and a CDN cache purge so old plaintext copies don't linger. The `_next/static/*` JavaScript bundles remain plaintext (framework code, no story data); only the publication content is encrypted. Story URLs (`/commit/<sha>/<slug>/`, `/pull/<n>/<slug>/`) keep their slug suffix in both modes — the URL path leaks headline-derived words but no protected data.
+**Caveats.** Lose the password and the published archive is unreadable — keep a copy in a password manager and your CI secret store. Toggling protection on or off requires a fresh build and a CDN cache purge so old plaintext copies don't linger. The `_next/static/*` JavaScript bundles remain plaintext (framework code, no story data); only the publication content is encrypted. In protected mode, the site emits canonical bare commit/PR routes (e.g. `/commit/<sha>/` and `/pull/<n>/`) without slug suffixes, avoiding URL leakage. Legacy slugged paths (`/commit/<sha>/<slug>/`, `/pull/<n>/<slug>/`) may still exist from prior builds and would leak headline-derived words from the slug portion.
 
 ---
 

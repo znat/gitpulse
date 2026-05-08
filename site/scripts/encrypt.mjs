@@ -31,7 +31,6 @@ import { dirname, join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ITERATIONS = 600_000;
-const SALT = new Uint8Array(16); // intentional: see header comment
 
 function b64(bytes) {
   return Buffer.from(bytes).toString('base64');
@@ -103,6 +102,10 @@ export async function runEncrypt({
     throw new Error(`out directory not found: ${outDir}`);
   }
 
+  // Generate a per-build random salt for unique key derivation
+  const salt = webcrypto.getRandomValues(new Uint8Array(16));
+  const saltB64 = b64(salt);
+
   const subtle = webcrypto.subtle;
   const baseKey = await subtle.importKey(
     'raw',
@@ -112,7 +115,7 @@ export async function runEncrypt({
     ['deriveKey'],
   );
   const key = await subtle.deriveKey(
-    { name: 'PBKDF2', salt: SALT, iterations: ITERATIONS, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: salt, iterations: ITERATIONS, hash: 'SHA-256' },
     baseKey,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -128,7 +131,7 @@ export async function runEncrypt({
         new TextEncoder().encode(text),
       ),
     );
-    return { iv: b64(iv), ct: b64(ct) };
+    return { iv: b64(iv), ct: b64(ct), salt: saltB64 };
   }
 
   const dataPrefix = join(outDir, 'data') + sep;

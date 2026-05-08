@@ -1,20 +1,18 @@
 /* gitpulse unlock bootstrap. Shipped to out/_gp/unlock.js by encrypt.mjs.
  *
- * Reads the {iv, ct} envelope from <script id="gp">, prompts for the
+ * Reads the {iv, ct, salt} envelope from <script id="gp">, prompts for the
  * password, derives a key with hardcoded params (matching encrypt.mjs),
  * decrypts, and document.writes the original HTML back into the page.
  *
- * Vanilla JS, no imports, no bundler. Same wire format as the {iv, ct}
+ * Vanilla JS, no imports, no bundler. Same wire format as the {iv, ct, salt}
  * envelopes shipped under data/ — PRPanelProvider reuses window.__gitpulseKey
  * to decrypt them at fetch time. AES-GCM auth-tag failure = wrong password.
  */
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'gp.k';
   var KEY_GLOBAL = '__gitpulseKey';
   var ITERATIONS = 600000;
-  var SALT = new Uint8Array(16);
 
   var payloadEl = document.getElementById('gp');
   if (!payloadEl) return;
@@ -25,6 +23,12 @@
     return;
   }
   if (!envelope || !envelope.iv || !envelope.ct) return;
+
+  // Use envelope's salt for site-specific key derivation and storage
+  var salt = envelope.salt ? b64decode(envelope.salt) : new Uint8Array(16);
+  // Create site-specific storage key using first 8 chars of salt base64
+  var saltId = envelope.salt ? envelope.salt.substring(0, 8) : '00000000';
+  var STORAGE_KEY = 'gp.k.' + saltId;
 
   function b64decode(s) {
     var bin = atob(s);
@@ -38,7 +42,7 @@
     return btoa(s);
   }
 
-  async function deriveKey(password) {
+  async function deriveKey(password, deriveSalt) {
     var baseKey = await crypto.subtle.importKey(
       'raw',
       new TextEncoder().encode(password),
@@ -47,7 +51,7 @@
       ['deriveKey'],
     );
     return crypto.subtle.deriveKey(
-      { name: 'PBKDF2', salt: SALT, iterations: ITERATIONS, hash: 'SHA-256' },
+      { name: 'PBKDF2', salt: deriveSalt, iterations: ITERATIONS, hash: 'SHA-256' },
       baseKey,
       { name: 'AES-GCM', length: 256 },
       true,
@@ -172,7 +176,7 @@
       submit.disabled = true;
       showPending();
       try {
-        var key = await deriveKey(pw.value);
+        var key = await deriveKey(pw.value, salt);
         var html = await decryptWithKey(envelope, key);
         // AES-GCM didn't throw → password is right. Persist key bytes.
         var raw = new Uint8Array(await crypto.subtle.exportKey('raw', key));
