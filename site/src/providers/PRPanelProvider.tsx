@@ -91,17 +91,32 @@ const PRPanelContext = createContext<PRPanelContextValue | null>(null);
 const CLOSE_ANIMATION_MS = 250;
 const STORY_PARAM = 'story';
 
+// Preserve whatever already lives on history.state — notably Next.js's
+// `__NA` and `__PRIVATE_NEXTJS_INTERNALS_TREE`. Replacing the state with a
+// bare `{ prPanel: ... }` object wipes those keys; Next's App Router then
+// takes a different render path on the next tick that calls more hooks
+// than the previous render, throwing React error #310. Reproduces on
+// Vercel previews (where the Vercel Live toolbar racing against Next's
+// pushState wrapper makes the wipe lethal); local `serve` happens to
+// re-merge in time and hides the bug.
 function pushStoryParam(storyId: string) {
   const url = new URL(window.location.href);
+  // Skip if the URL already matches — popstate (back/forward) and the
+  // initial deep-link mount both call openPanel for a story whose id
+  // already lives in the URL bar. Pushing again would create a duplicate
+  // history entry and force the user to press Back twice to leave.
+  if (url.searchParams.get(STORY_PARAM) === storyId) return;
   url.searchParams.set(STORY_PARAM, storyId);
-  window.history.pushState({ prPanel: true }, '', url.toString());
+  const prev = (window.history.state ?? {}) as Record<string, unknown>;
+  window.history.pushState({ ...prev, prPanel: true }, '', url.toString());
 }
 
 function removeStoryParam() {
   const url = new URL(window.location.href);
   if (!url.searchParams.has(STORY_PARAM)) return;
   url.searchParams.delete(STORY_PARAM);
-  window.history.replaceState({ prPanel: false }, '', url.toString());
+  const prev = (window.history.state ?? {}) as Record<string, unknown>;
+  window.history.replaceState({ ...prev, prPanel: false }, '', url.toString());
 }
 
 // Map a story-detail href to the story id used as the JSON filename:
@@ -210,12 +225,19 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
       closeTimerRef.current = null;
     }
 
+    // Update URL first, synchronously with the user's click. Calling
+    // history.replaceState from inside the close-animation setTimeout
+    // (after the state update) raced Next.js's App Router on Vercel and
+    // crashed the tree with React #300 ("rendered fewer hooks"). Doing
+    // the URL change up front lets Next's router state update batch
+    // cleanly with our setState below.
+    removeStoryParam();
+
     setState((prev) =>
       prev.isOpen ? { ...prev, isClosing: true } : prev,
     );
     closeTimerRef.current = setTimeout(() => {
       setState(initialState);
-      removeStoryParam();
       closeTimerRef.current = null;
     }, CLOSE_ANIMATION_MS);
   }, []);
@@ -274,6 +296,12 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
   }, [openPanel]);
 
   // Document-level click interception for /pull/<n>/ and /commit/<sha>/ links.
+  // Registered in CAPTURE phase so we run before Next.js's <Link> onClick
+  // handler (which is delegated through React's root listener and would
+  // otherwise call router.push and replace the feed underneath the panel
+  // with the standalone story page). On story links we stopPropagation so
+  // the click never reaches React's delegated listener — every other click
+  // on the page is left untouched.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       // Let the user open in a new tab as expected.
@@ -296,10 +324,11 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
       if (!storyId) return;
 
       e.preventDefault();
+      e.stopPropagation();
       openPanel(storyId);
     };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
   }, [openPanel]);
 
   // Open from ?story= on first mount (deep links / refresh).

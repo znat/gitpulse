@@ -47,6 +47,10 @@ export function storyOgImagePath(story: Story): string {
   return `${base}/${slug}/opengraph-image.png`;
 }
 
+export function storyJsonPath(story: Story): string {
+  return `${storyBasePath(story)}.json`;
+}
+
 // ── Releases ─────────────────────────────────────────────
 
 export function releasesIndexPath(): string {
@@ -59,4 +63,8 @@ export function releasePath(release: Release): string {
 
 export function releaseOgImagePath(release: Release): string {
   return `/releases/${encodeURIComponent(release.tag)}/opengraph-image.png`;
+}
+
+export function releaseJsonPath(release: Release): string {
+  return `/releases/${encodeURIComponent(release.tag)}.json`;
 }

@@ -132,6 +132,16 @@ export async function runEncrypt({
   }
 
   const dataPrefix = join(outDir, 'data') + sep;
+  // JSON files exposed at human-friendly URLs by copy-json-routes.mjs.
+  // Match only direct children — never inside nested directories.
+  const jsonRouteParents = new Set([
+    join(outDir, 'pull'),
+    join(outDir, 'commit'),
+    join(outDir, 'releases'),
+  ]);
+  function isJsonRoute(filePath) {
+    return jsonRouteParents.has(dirname(filePath));
+  }
   let htmlCount = 0;
   let jsonCount = 0;
   let ogDeleted = 0;
@@ -145,7 +155,10 @@ export async function runEncrypt({
       const original = readFileSync(path, 'utf8');
       writeFileSync(path, htmlShell(await encryptText(original), basePath));
       htmlCount++;
-    } else if (lower.endsWith('.json') && path.startsWith(dataPrefix)) {
+    } else if (
+      lower.endsWith('.json') &&
+      (path.startsWith(dataPrefix) || isJsonRoute(path))
+    ) {
       const original = readFileSync(path, 'utf8');
       writeFileSync(path, JSON.stringify(await encryptText(original)));
       jsonCount++;
