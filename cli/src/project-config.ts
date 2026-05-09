@@ -9,6 +9,10 @@ const ThemeSchema = z.strictObject({
     .string()
     .regex(HEX_COLOR, 'must be a hex color like #b8860b or #abc')
     .optional(),
+  linkColor: z
+    .string()
+    .regex(HEX_COLOR, 'must be a hex color like #326891 or #abc')
+    .optional(),
 });
 
 const ProjectConfigSchema = z.strictObject({

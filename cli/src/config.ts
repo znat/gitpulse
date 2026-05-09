@@ -20,6 +20,7 @@ export interface RuntimeConfig {
   releasesPerPage?: number;
   theme?: {
     accentColor?: string;
+    linkColor?: string;
   };
   ai: {
     apiKey: string;

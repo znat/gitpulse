@@ -21,7 +21,12 @@ import { Footer } from '@/components/Footer';
 import { PRSidePanel } from '@/components/PRSidePanel';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { PRPanelProvider } from '@/providers/PRPanelProvider';
-import { accentColor, loadRepo, publicationName } from '@/lib/repo';
+import {
+  accentColor,
+  linkColor,
+  loadRepo,
+  publicationName,
+} from '@/lib/repo';
 import { JsonLd, buildWebSiteJsonLd } from '@/lib/json-ld';
 import './globals.css';
 
@@ -166,8 +171,17 @@ export default function RootLayout({
 
   const repo = loadRepo();
   const accent = accentColor(repo);
-  const themeOverrideCss = accent
-    ? `:root,[data-theme='light'],[data-theme='dark']{--feed-gold:${accent};--accent-tertiary:${accent};}`
+  const link = linkColor(repo);
+  const overrides: string[] = [];
+  if (accent) overrides.push(`--feed-gold:${accent}`, `--accent-tertiary:${accent}`);
+  if (link)
+    overrides.push(
+      `--accent-primary:${link}`,
+      `--accent-hover:${link}`,
+      `--accent:${link}`,
+    );
+  const themeOverrideCss = overrides.length
+    ? `:root,[data-theme='light'],[data-theme='dark']{${overrides.join(';')};}`
     : null;
   return (
     <html lang="en" suppressHydrationWarning>

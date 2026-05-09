@@ -12,6 +12,7 @@ export interface RepoInfo {
   releasesPerPage?: number;
   theme?: {
     accentColor?: string;
+    linkColor?: string;
   };
 }
 
@@ -66,5 +67,10 @@ export function releasesPerPage(repo: RepoInfo): number {
 
 export function accentColor(repo: RepoInfo): string | null {
   const v = repo.theme?.accentColor;
+  return typeof v === 'string' && HEX_COLOR.test(v) ? v : null;
+}
+
+export function linkColor(repo: RepoInfo): string | null {
+  const v = repo.theme?.linkColor;
   return typeof v === 'string' && HEX_COLOR.test(v) ? v : null;
 }

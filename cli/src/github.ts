@@ -11,6 +11,7 @@ export interface RepoInfo {
   releasesPerPage?: number;
   theme?: {
     accentColor?: string;
+    linkColor?: string;
   };
 }
 
