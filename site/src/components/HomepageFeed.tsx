@@ -15,15 +15,15 @@ import { PaginationNav } from '@/components/PaginationNav';
 interface HomepageFeedProps {
   days: StoryDay[];
   releasesByDay?: ReleasesByDay;
-  prevHref?: string;
-  nextHref?: string;
+  olderHref?: string;
+  newerHref?: string;
 }
 
 export function HomepageFeed({
   days,
   releasesByDay = {},
-  prevHref,
-  nextHref,
+  olderHref,
+  newerHref,
 }: HomepageFeedProps) {
   const hasContent = days.length > 0 || Object.keys(releasesByDay).length > 0;
   if (!hasContent) return <EmptyHomepage />;
@@ -61,7 +61,7 @@ export function HomepageFeed({
           </div>
         );
       })}
-      <PaginationNav prevHref={prevHref} nextHref={nextHref} />
+      <PaginationNav olderHref={olderHref} newerHref={newerHref} />
     </div>
   );
 }

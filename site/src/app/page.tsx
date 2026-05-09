@@ -24,7 +24,7 @@ export default function HomePage() {
   const days = groupByDay(loadStories());
   const releasesByDay = groupReleasesByDay(loadReleases());
   const slice = paginateFeed(days, releasesByDay, daysPerPage(repo), 1);
-  const prevHref =
+  const olderHref =
     slice.totalPages > 1 ? feedPagePath(2) : undefined;
 
   return (
@@ -37,7 +37,7 @@ export default function HomePage() {
       <HomepageFeed
         days={slice.days}
         releasesByDay={slice.releasesByDay}
-        prevHref={prevHref}
+        olderHref={olderHref}
       />
     </main>
   );

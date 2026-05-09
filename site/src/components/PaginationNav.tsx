@@ -1,21 +1,21 @@
 import Link from 'next/link';
 
 interface PaginationNavProps {
-  prevHref?: string;
-  nextHref?: string;
+  olderHref?: string;
+  newerHref?: string;
 }
 
-export function PaginationNav({ prevHref, nextHref }: PaginationNavProps) {
-  if (!prevHref && !nextHref) return null;
+export function PaginationNav({ olderHref, newerHref }: PaginationNavProps) {
+  if (!olderHref && !newerHref) return null;
   return (
     <nav
       aria-label="Pagination"
       className="flex items-center justify-between py-10 font-feed-mono text-[0.6875rem] uppercase tracking-[0.2em]"
     >
       <span className="flex-1">
-        {nextHref && (
+        {newerHref && (
           <Link
-            href={nextHref}
+            href={newerHref}
             rel="prev"
             className="text-feed-gold no-underline hover:underline"
           >
@@ -24,9 +24,9 @@ export function PaginationNav({ prevHref, nextHref }: PaginationNavProps) {
         )}
       </span>
       <span className="flex-1 text-right">
-        {prevHref && (
+        {olderHref && (
           <Link
-            href={prevHref}
+            href={olderHref}
             rel="next"
             className="text-feed-gold no-underline hover:underline"
           >

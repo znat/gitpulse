@@ -10,11 +10,16 @@ const LINKS = [
 ];
 
 function activeKey(pathname: string): 'latest' | 'releases' | null {
-  const stripped = basePath && pathname.startsWith(basePath)
+  const hasBasePath =
+    !!basePath &&
+    (pathname === basePath || pathname.startsWith(`${basePath}/`));
+  const stripped = hasBasePath
     ? pathname.slice(basePath.length) || '/'
     : pathname;
   if (stripped === '/' || stripped.startsWith('/page/')) return 'latest';
-  if (stripped.startsWith('/releases')) return 'releases';
+  if (stripped === '/releases' || stripped.startsWith('/releases/')) {
+    return 'releases';
+  }
   return null;
 }
 

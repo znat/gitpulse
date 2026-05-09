@@ -10,7 +10,7 @@ import {
   publicationName,
   publicationSubtitle,
 } from '@/lib/repo';
-import { buildHomeMetadata } from '@/lib/seo';
+import { buildHomeMetadata, canonicalUrl } from '@/lib/seo';
 import {
   feedPagePath,
   mergedSortedDates,
@@ -35,8 +35,19 @@ export function generateStaticParams(): RouteParams[] {
   return params;
 }
 
-export function generateMetadata(): Metadata {
-  return buildHomeMetadata();
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<RouteParams>;
+}): Promise<Metadata> {
+  const { n } = await params;
+  const page = Number(n);
+  const base = buildHomeMetadata();
+  if (!Number.isInteger(page) || page < 2) return base;
+  return {
+    ...base,
+    alternates: { canonical: canonicalUrl(feedPagePath(page)) },
+  };
 }
 
 export default async function HomePageN({
@@ -54,9 +65,9 @@ export default async function HomePageN({
   const slice = paginateFeed(days, releasesByDay, daysPerPage(repo), page);
   if (slice.page !== page) notFound();
 
-  const prevHref =
+  const olderHref =
     slice.page < slice.totalPages ? feedPagePath(slice.page + 1) : undefined;
-  const nextHref = feedPagePath(slice.page - 1);
+  const newerHref = feedPagePath(slice.page - 1);
 
   return (
     <main className="min-h-screen bg-background">
@@ -68,8 +79,8 @@ export default async function HomePageN({
       <HomepageFeed
         days={slice.days}
         releasesByDay={slice.releasesByDay}
-        prevHref={prevHref}
-        nextHref={nextHref}
+        olderHref={olderHref}
+        newerHref={newerHref}
       />
     </main>
   );

@@ -7,7 +7,7 @@ import {
   canonicalUrl,
 } from '@/lib/seo';
 import { JsonLd, buildReleasesListJsonLd } from '@/lib/json-ld';
-import { releasePath, releasesIndexPath } from '@/lib/urls';
+import { releasePath } from '@/lib/urls';
 import { paginateReleases, releasesPagePath } from '@/lib/pagination';
 import { ReleasesListHero } from '@/components/ReleasesListHero';
 import { ReleasesListStandardCard } from '@/components/ReleasesListStandardCard';
@@ -30,8 +30,19 @@ export function generateStaticParams(): RouteParams[] {
   return params;
 }
 
-export function generateMetadata(): Metadata {
-  return buildReleasesListMetadata();
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<RouteParams>;
+}): Promise<Metadata> {
+  const { n } = await params;
+  const page = Number(n);
+  const base = buildReleasesListMetadata();
+  if (!Number.isInteger(page) || page < 2) return base;
+  return {
+    ...base,
+    alternates: { canonical: canonicalUrl(releasesPagePath(page)) },
+  };
 }
 
 export default async function ReleasesPageN({
@@ -54,16 +65,16 @@ export default async function ReleasesPageN({
 
   const listJsonLd = buildReleasesListJsonLd({
     releases: slice.releases,
-    canonicalUrl: canonicalUrl(releasesIndexPath()),
+    canonicalUrl: canonicalUrl(releasesPagePath(slice.page)),
     repo,
     releaseUrl: (r) => canonicalUrl(releasePath(r)),
   });
 
-  const prevHref =
+  const olderHref =
     slice.page < slice.totalPages
       ? releasesPagePath(slice.page + 1)
       : undefined;
-  const nextHref = releasesPagePath(slice.page - 1);
+  const newerHref = releasesPagePath(slice.page - 1);
 
   return (
     <main className="min-h-screen bg-background">
@@ -92,7 +103,7 @@ export default async function ReleasesPageN({
             </div>
           </>
         )}
-        <PaginationNav prevHref={prevHref} nextHref={nextHref} />
+        <PaginationNav olderHref={olderHref} newerHref={newerHref} />
       </div>
     </main>
   );

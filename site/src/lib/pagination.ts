@@ -25,11 +25,13 @@ export function paginateFeed(
   daysPerPage: number,
   page: number,
 ): FeedPage {
+  const pageSize =
+    Number.isInteger(daysPerPage) && daysPerPage > 0 ? daysPerPage : 1;
   const dates = mergedSortedDates(days, releasesByDay);
-  const totalPages = Math.max(1, Math.ceil(dates.length / daysPerPage));
+  const totalPages = Math.max(1, Math.ceil(dates.length / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
-  const start = (safePage - 1) * daysPerPage;
-  const pageDates = new Set(dates.slice(start, start + daysPerPage));
+  const start = (safePage - 1) * pageSize;
+  const pageDates = new Set(dates.slice(start, start + pageSize));
   return {
     page: safePage,
     totalPages,
@@ -55,13 +57,15 @@ export function paginateReleases<T>(
   perPage: number,
   page: number,
 ): ReleasesPage<T> {
-  const totalPages = Math.max(1, Math.ceil(releases.length / perPage));
+  const pageSize =
+    Number.isInteger(perPage) && perPage > 0 ? perPage : 1;
+  const totalPages = Math.max(1, Math.ceil(releases.length / pageSize));
   const safePage = Math.min(Math.max(1, page), totalPages);
-  const start = (safePage - 1) * perPage;
+  const start = (safePage - 1) * pageSize;
   return {
     page: safePage,
     totalPages,
-    releases: releases.slice(start, start + perPage),
+    releases: releases.slice(start, start + pageSize),
   };
 }
 

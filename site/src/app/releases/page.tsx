@@ -55,7 +55,7 @@ export default function ReleasesIndexPage() {
     releaseUrl: (r) => canonicalUrl(releasePath(r)),
   });
 
-  const prevHref =
+  const olderHref =
     slice.totalPages > 1 ? releasesPagePath(2) : undefined;
 
   return (
@@ -85,7 +85,7 @@ export default function ReleasesIndexPage() {
             </div>
           </>
         )}
-        <PaginationNav prevHref={prevHref} />
+        <PaginationNav olderHref={olderHref} />
       </div>
     </main>
   );
