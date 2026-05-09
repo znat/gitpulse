@@ -15,7 +15,7 @@ export function Footer() {
         >
           <span className="opacity-50">◆</span>
           <span className="border-b border-dotted border-current pb-px">
-            Get one for your repo
+            Get your own Gitpulse
           </span>
           <span className="inline-block transition-transform duration-200 ease-out group-hover:translate-x-1">
             →
