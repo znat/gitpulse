@@ -5,7 +5,7 @@
 `git log` was never meant for humans.
 
 **Let your code contributions speak for themselves.**  
-The easiest automated way to communicate what your team is shipping.
+The easy and 100% automated way to communicate what your team is shipping.
 
 <br>
 
@@ -27,14 +27,14 @@ Gitpulse analyzes your git history and turns it into a polished publication — 
 <tr>
 <td>
 
-**AI-generated stories**
+◆ **AI-generated stories**
 
 _Reads diffs, PR descriptions, and release notes to write plain-English posts._
 
 </td>
 <td>
 
-**Zero infrastructure**
+◆ **Zero infrastructure**
 
 _Runs entirely in your CI. No external service, no remote database — your data stays yours._
 
@@ -43,14 +43,14 @@ _Runs entirely in your CI. No external service, no remote database — your data
 <tr>
 <td>
 
-**Deploy anywhere**
+◆ **Deploy anywhere**
 
 _GitHub Pages, Vercel, Netlify, Cloudflare Pages, S3 — anything that serves HTML._
 
 </td>
 <td>
 
-**Any LLM provider**
+◆ **Any LLM provider**
 
 _OpenAI, Anthropic, OpenRouter, MiniMax, or any OpenAI-compatible endpoint._
 
@@ -59,7 +59,7 @@ _OpenAI, Anthropic, OpenRouter, MiniMax, or any OpenAI-compatible endpoint._
 <tr>
 <td colspan="2">
 
-**Optional password protection**
+◆ **Optional password protection**
 
 _End-to-end encrypted publications — works on any static host, no server required._
 
@@ -71,6 +71,11 @@ _End-to-end encrypted publications — works on any static host, no server requi
 
 ## How it works
 
+A CLI (`gitpulse analyze` + `gitpulse build`) runs in **your** CI, reads your git history, and publishes a static site. No external service, no database, nothing outside your pipeline.
+
+<details>
+<summary>More details</summary>
+
 Two pieces:
 
 1. **`@gitpulse/cli`** — a tiny CLI on npm with two subcommands:
@@ -80,17 +85,33 @@ Two pieces:
 
 State is the deployed site itself. Each run fetches `manifest.json` from your live URL — a record of every commit already analyzed — picks up where it left off, and only processes what's new. No database, no separate branch, no artifact chain.
 
+</details>
+
 ---
 
 ## Quickstart
 
-You'll need an LLM API key (see [LLM providers](#llm-providers)). Choose your deployment target and follow the steps — or hand the setup instructions directly to a coding agent.
-
-> [!NOTE]
-> Pre-1.0 — the CLI is at `0.x.y` and consumers pin `@gitpulse/cli@0` (npm) and `znat/gitpulse/.github/workflows/publish-pages.yaml@v0` (workflow). When the API stabilises, both move to `@1` / `@v1`.
+You'll need an LLM API key (see [LLM providers](#llm-providers)). Choose your deployment target:
 
 <details open>
 <summary><b>GitHub Pages</b> — one-line reusable workflow</summary>
+
+<blockquote>
+<details>
+<summary>🤖 Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to GitHub Pages.
+
+Read these before implementing:
+- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
+```
+
+</details>
+</blockquote>
 
 In your repo's **Settings → Pages → Source: GitHub Actions**, then drop this in `.github/workflows/gitpulse.yml`:
 
@@ -119,27 +140,26 @@ jobs:
 
 That's it. First run bootstraps from the last 30 days of history; subsequent runs are incremental.
 
-<blockquote>
-<details>
-<summary>Copyable instructions for a coding agent</summary>
-
-```
-Set up Gitpulse on this repository to publish a changelog to GitHub Pages.
-
-Read these before implementing:
-- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
-- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
-
-Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
-```
-
-</details>
-</blockquote>
-
 </details>
 
 <details>
 <summary><b>Vercel</b> — Vercel-side build (simplest)</summary>
+
+<blockquote>
+<details>
+<summary>🤖 Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to Vercel, with Vercel handling the build.
+
+Read these before implementing:
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then update package.json, list every environment variable that needs to be configured in the Vercel dashboard, and include any other required changes.
+```
+
+</details>
+</blockquote>
 
 Vercel auto-builds on every push if you connect the repo. Make Gitpulse part of that build:
 
@@ -166,26 +186,28 @@ That's it — Gitpulse auto-detects the repo and site URL from Vercel's environm
 
 If you'd rather keep secrets out of Vercel and run the build in CI, see the **GitHub Actions → Vercel** option below.
 
-<blockquote>
-<details>
-<summary>Copyable instructions for a coding agent</summary>
-
-```
-Set up Gitpulse on this repository to publish a changelog to Vercel, with Vercel handling the build.
-
-Read these before implementing:
-- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
-
-Based on the configuration schema, ask me about each available option before implementing. Then update package.json, list every environment variable that needs to be configured in the Vercel dashboard, and include any other required changes.
-```
-
-</details>
-</blockquote>
-
 </details>
 
 <details>
 <summary><b>Vercel</b> — GitHub Actions builds, Vercel hosts (secrets stay in CI)</summary>
+
+<blockquote>
+<details>
+<summary>🤖 Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to Vercel, with GitHub Actions handling the build and Vercel acting as the host.
+
+Read these before implementing:
+- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
+- Gitpulse's own Vercel deployment as a reference: https://github.com/znat/gitpulse/blob/main/.github/workflows/deploy-vercel.yml
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
+```
+
+</details>
+</blockquote>
 
 If you'd rather keep all secrets in your CI runner and have Vercel act as a pure CDN, run analyze + build in GitHub Actions and ship the prebuilt output via `vercel deploy --prebuilt`. Vercel runs no build, sees no LLM keys, and needs no env vars.
 
@@ -247,42 +269,14 @@ If you prefer, you can also run `vercel link` locally to pull the same IDs from 
 
 This is exactly what gitpulse itself uses to dogfood Vercel — see [`.github/workflows/deploy-vercel.yml`](./.github/workflows/deploy-vercel.yml).
 
-<blockquote>
-<details>
-<summary>Copyable instructions for a coding agent</summary>
-
-```
-Set up Gitpulse on this repository to publish a changelog to Vercel, with GitHub Actions handling the build and Vercel acting as the host.
-
-Read these before implementing:
-- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
-- Gitpulse's own Vercel deployment as a reference: https://github.com/znat/gitpulse/blob/main/.github/workflows/deploy-vercel.yml
-- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
-
-Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
-```
-
-</details>
-</blockquote>
-
 </details>
 
 <details>
 <summary><b>Netlify</b> — build hook</summary>
 
-Same shape. In `netlify.toml`:
-
-```toml
-[build]
-  command = "npm install -g @gitpulse/cli@0 --silent && gitpulse analyze && gitpulse build"
-  publish = ".gitpulse/out"
-```
-
-Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables. Netlify's build env (`REPOSITORY_URL`, `URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`) is auto-detected for `GITHUB_REPOSITORY` and `GITPULSE_SITE_URL`; basePath defaults to `''` because Netlify serves at root. No other vars to set. Override `GITPULSE_SITE_URL` only for custom domains.
-
 <blockquote>
 <details>
-<summary>Copyable instructions for a coding agent</summary>
+<summary>🤖 Copyable instructions for a coding agent</summary>
 
 ```
 Set up Gitpulse on this repository to publish a changelog to Netlify.
@@ -296,20 +290,24 @@ Based on the configuration schema, ask me about each available option before imp
 </details>
 </blockquote>
 
+Same shape. In `netlify.toml`:
+
+```toml
+[build]
+  command = "npm install -g @gitpulse/cli@0 --silent && gitpulse analyze && gitpulse build"
+  publish = ".gitpulse/out"
+```
+
+Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables. Netlify's build env (`REPOSITORY_URL`, `URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`) is auto-detected for `GITHUB_REPOSITORY` and `GITPULSE_SITE_URL`; basePath defaults to `''` because Netlify serves at root. No other vars to set. Override `GITPULSE_SITE_URL` only for custom domains.
+
 </details>
 
 <details>
 <summary><b>Cloudflare Pages</b> — build command in dashboard</summary>
 
-In the Cloudflare Pages project:
-
-- **Build command**: `npm install -g @gitpulse/cli@0 --silent && gitpulse analyze && gitpulse build`
-- **Build output directory**: `.gitpulse/out`
-- **Environment variables**: `OPENAI_API_KEY` + `GITHUB_TOKEN` + `GITHUB_REPOSITORY` (Cloudflare Pages doesn't expose repo info via env, unlike Vercel/Netlify). Site URL is auto-detected from `CF_PAGES_URL`. basePath defaults to `''` since Cloudflare serves at root.
-
 <blockquote>
 <details>
-<summary>Copyable instructions for a coding agent</summary>
+<summary>🤖 Copyable instructions for a coding agent</summary>
 
 ```
 Set up Gitpulse on this repository to publish a changelog to Cloudflare Pages.
@@ -323,10 +321,33 @@ Based on the configuration schema, ask me about each available option before imp
 </details>
 </blockquote>
 
+In the Cloudflare Pages project:
+
+- **Build command**: `npm install -g @gitpulse/cli@0 --silent && gitpulse analyze && gitpulse build`
+- **Build output directory**: `.gitpulse/out`
+- **Environment variables**: `OPENAI_API_KEY` + `GITHUB_TOKEN` + `GITHUB_REPOSITORY` (Cloudflare Pages doesn't expose repo info via env, unlike Vercel/Netlify). Site URL is auto-detected from `CF_PAGES_URL`. basePath defaults to `''` since Cloudflare serves at root.
+
 </details>
 
 <details>
 <summary><b>Anywhere else</b> — S3, GitLab CI, custom Pages</summary>
+
+<blockquote>
+<details>
+<summary>🤖 Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to a custom static host.
+
+Read these before implementing:
+- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
+```
+
+</details>
+</blockquote>
 
 The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever pipeline you have:
 
@@ -349,23 +370,6 @@ The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever
 
 - run: aws s3 sync ./.gitpulse/out s3://my-bucket --delete
 ```
-
-<blockquote>
-<details>
-<summary>Copyable instructions for a coding agent</summary>
-
-```
-Set up Gitpulse on this repository to publish a changelog to a custom static host.
-
-Read these before implementing:
-- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
-- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
-
-Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
-```
-
-</details>
-</blockquote>
 
 </details>
 
