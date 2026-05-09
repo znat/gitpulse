@@ -17,7 +17,6 @@ const IS_ENCRYPTED = process.env.NEXT_PUBLIC_GITPULSE_ENCRYPTED === '1';
 interface Envelope {
   iv: string;
   ct: string;
-  salt?: string;
 }
 
 function b64decode(s: string): Uint8Array<ArrayBuffer> {

@@ -7,11 +7,12 @@ import { pMap } from './pmap.ts';
 import { encodeFilename, decodeFilename } from './release-render.ts';
 
 const PBKDF2_ITERATIONS = 600_000;
+// Must match site/scripts/encrypt.mjs SALT exactly.
+const SALT = new Uint8Array(16);
 
 interface Envelope {
   iv: string;
   ct: string;
-  salt?: string;
 }
 
 function isEnvelope(x: unknown): x is Envelope {
@@ -30,7 +31,7 @@ function b64decode(s: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>): Promise<webcrypto.CryptoKey> {
+async function deriveKey(password: string): Promise<webcrypto.CryptoKey> {
   const baseKey = await webcrypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password),
@@ -39,7 +40,7 @@ async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>): Promi
     ['deriveKey'],
   );
   return webcrypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: SALT, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
     baseKey,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -59,20 +60,15 @@ export class WrongGitpulsePasswordError extends Error {
 
 export class SiteFetcher {
   private siteUrl: string;
-  private password: string | null = null;
+  private keyPromise: Promise<webcrypto.CryptoKey> | null = null;
 
   constructor(siteUrl: string, opts: { password?: string } = {}) {
     this.siteUrl = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`;
-    if (opts.password) this.password = opts.password;
+    if (opts.password) this.keyPromise = deriveKey(opts.password);
   }
 
   private async decryptEnvelope(env: Envelope): Promise<string> {
-    if (!this.password) {
-      throw new Error('Password required to decrypt site');
-    }
-    // Use envelope's salt if present (new format), otherwise fallback to zero salt (legacy)
-    const salt = env.salt ? b64decode(env.salt) : new Uint8Array(16);
-    const key = await deriveKey(this.password, salt);
+    const key = await this.keyPromise!;
     try {
       const plain = await webcrypto.subtle.decrypt(
         { name: 'AES-GCM', iv: b64decode(env.iv) },
@@ -175,10 +171,7 @@ export class SiteFetcher {
     } catch {
       return null;
     }
-    if (isEnvelope(body) && !this.password) {
-      throw new Error('Password required to decrypt site');
-    }
-    if (!this.password) return body as T;
+    if (!this.keyPromise) return body as T;
     if (!isEnvelope(body)) {
       // The site is unprotected (or the file is plaintext) — accept as-is.
       return body as T;
