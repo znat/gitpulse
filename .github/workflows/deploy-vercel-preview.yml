@@ -90,9 +90,11 @@ jobs:
         id: deploy
         run: |
           set -euo pipefail
-          # Pinned major: avoids surprise breakage from a vercel@latest CLI
-          # release changing flags or stdout (URL capture relies on stdout).
-          npm install -g vercel@53
+          # Pinned exact: vercel@53.3.0 (and @latest, since it points there)
+          # ships with a missing dep — declares @vercel/koa@0.1.57 but only
+          # 0.1.56 is published on npm, so `npm i -g vercel@53` 404s. Pin to
+          # the last known good version until upstream republishes.
+          npm install -g vercel@53.2.0
           # VERCEL_TOKEN is read from env — passing --token would expose it
           # in /proc/<pid>/cmdline.
           URL=$(vercel deploy --prebuilt --yes)
