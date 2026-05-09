@@ -1,0 +1,106 @@
+name: Deploy main to Vercel Staging
+
+# Stable staging deployment for the main branch at
+# https://gitpulse-main.vercel.app. Mirrors the preview workflow's
+# build pipeline (in-repo CLI for analyze, in-repo site source for the
+# Next.js build) so that anything merged to main is reproducible end-to
+# end without waiting for a CLI release. Production
+# (deploy-vercel.yml → gitpulse-demo.vercel.app) keeps using the
+# released CLI to validate the consumer-facing path.
+#
+# Reuses VERCEL_TOKEN / VERCEL_ORG_ID from existing secrets and
+# requires VERCEL_PROJECT_ID_STAGING for the gitpulse-main project.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - LICENSE
+      - .gitignore
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Newer pushes to main cancel any in-flight staging build — only the
+  # latest commit's staging is interesting.
+  group: gitpulse-vercel-staging
+  cancel-in-progress: true
+
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install + build in-repo CLI
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @gitpulse/cli build
+
+      - name: Analyze (in-repo CLI)
+        run: node cli/dist/cli.js analyze
+        env:
+          AI_PROTOCOL: openai
+          AI_BASE_URL: https://api.minimax.io/v1
+          AI_MODEL: MiniMax-M2.7
+          # Restore analyzer state from prod for incremental runs. Prod
+          # has the most complete history, so we don't repeat full
+          # analysis when this is the first staging deploy.
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
+          OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build site from main source
+        run: |
+          set -euo pipefail
+          rm -rf site/public/data
+          mkdir -p site/public/data
+          cp -RT .gitpulse/data site/public/data
+          yarn workspace @gitpulse/site build
+        env:
+          GITPULSE_BASE_PATH: none
+          # Canonical URLs / OG tags point at the staging hostname so
+          # shared links resolve to the same deployment people are
+          # actually viewing.
+          GITPULSE_SITE_URL: https://gitpulse-main.vercel.app
+
+      - name: Stage prebuilt output for Vercel
+        # Vercel's --prebuilt flag expects this exact directory layout.
+        # https://vercel.com/docs/build-output-api/v3
+        run: |
+          set -euo pipefail
+          mkdir -p .vercel/output/static
+          cp -RT site/out .vercel/output/static
+          cat > .vercel/output/config.json <<'EOF'
+          { "version": 3 }
+          EOF
+
+      - name: Deploy to Vercel Staging
+        run: |
+          set -euo pipefail
+          # Pinned exact: vercel@53.3.0 (and @latest, since it points there)
+          # ships with a missing dep — declares @vercel/koa@0.1.57 but only
+          # 0.1.56 is published on npm, so `npm i -g vercel@53` 404s. Pin to
+          # the last known good version until upstream republishes.
+          npm install -g vercel@53.2.0
+          # --prod targets the project's production URL (gitpulse-main.vercel.app).
+          # --archive=tgz bundles the upload into a single tarball — without
+          # it we hit the per-file rate limit ("more than 5000, code:
+          # api-upload-free") fast on a many-files static export.
+          # VERCEL_TOKEN is read from env — passing --token would expose it
+          # in /proc/<pid>/cmdline.
+          vercel deploy --prebuilt --prod --yes --archive=tgz
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
