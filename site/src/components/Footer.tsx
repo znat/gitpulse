@@ -7,7 +7,7 @@ export function Footer() {
           Generated automatically from git history.
         </p>
         <a
-          href="https://github.com/znat/gitpulse"
+          href="https://github.com/znat/gitpulse?utm_source=gitpulse-publication&utm_medium=footer&utm_campaign=get-your-own"
           target="_blank"
           rel="noopener noreferrer"
           className="group inline-flex items-center gap-2 font-mono text-xs tracking-widest text-accent hover:opacity-75 hover:no-underline transition-opacity duration-200"
