@@ -108,9 +108,13 @@ export function copyJsonRoutes({ outDir }) {
         skipped.push(`release ${entry.tag} (source missing)`);
         continue;
       }
+      // Disk path uses the raw tag — matches Next.js's own page dirs
+      // (out/releases/<tag>/index.html). The static server decodes URLs
+      // before file lookup, so the URL needs encodeURIComponent to stay
+      // consistent with releaseJsonPath() in src/lib/urls.ts.
       const dst = join(outDir, 'releases', `${entry.tag}.json`);
       copyTo(src, dst);
-      entry.jsonUrl = `/releases/${entry.tag}.json`;
+      entry.jsonUrl = `/releases/${encodeURIComponent(entry.tag)}.json`;
       releaseCount++;
     }
     writeJson(releasesManifestPath, manifest);
