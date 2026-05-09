@@ -38,7 +38,7 @@ export function ReleasesListCompactRow({ release }: { release: Release }) {
             {dateStr}
           </span>
         </div>
-        <p className="font-feed-body text-[0.9375rem] italic leading-[1.45] text-foreground-secondary line-clamp-2 mb-3 transition-colors group-hover:text-foreground">
+        <p className="font-feed-display font-semibold text-lg md:text-xl leading-tight text-foreground-secondary line-clamp-2 mb-3 transition-colors group-hover:text-foreground">
           &ldquo;{release.quip}&rdquo;
         </p>
         <div className="flex items-center justify-between">

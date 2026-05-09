@@ -16,6 +16,11 @@ export interface RuntimeConfig {
   includePrereleases: boolean;
   publicationTitle?: string;
   publicationSubtitle?: string;
+  daysPerPage?: number;
+  releasesPerPage?: number;
+  theme?: {
+    accentColor?: string;
+  };
   ai: {
     apiKey: string;
     model: string;
@@ -70,6 +75,9 @@ export function loadConfig(env = process.env): RuntimeConfig {
     includePrereleases: projectConfig.includePrereleases ?? true,
     publicationTitle: projectConfig.publicationTitle,
     publicationSubtitle: projectConfig.publicationSubtitle,
+    daysPerPage: projectConfig.daysPerPage,
+    releasesPerPage: projectConfig.releasesPerPage,
+    theme: projectConfig.theme,
     ai: {
       apiKey,
       model: env.AI_MODEL ?? 'gpt-4o-mini',

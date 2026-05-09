@@ -7,6 +7,11 @@ export interface RepoInfo {
   url: string;
   publicationTitle?: string;
   publicationSubtitle?: string;
+  daysPerPage?: number;
+  releasesPerPage?: number;
+  theme?: {
+    accentColor?: string;
+  };
 }
 
 export interface PRData {

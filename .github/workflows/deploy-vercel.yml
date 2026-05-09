@@ -90,7 +90,11 @@ jobs:
 
       - name: Deploy to Vercel
         run: |
-          npm install -g vercel@latest
+          # Pinned exact: vercel@53.3.0 (and @latest, since it points there)
+          # ships with a missing dep — declares @vercel/koa@0.1.57 but only
+          # 0.1.56 is published on npm, so `npm i -g vercel@latest` 404s. Pin
+          # to the last known good version until upstream republishes.
+          npm install -g vercel@53.2.0
           vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

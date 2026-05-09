@@ -21,7 +21,7 @@ import { Footer } from '@/components/Footer';
 import { PRSidePanel } from '@/components/PRSidePanel';
 import { ThemeProvider } from '@/providers/ThemeProvider';
 import { PRPanelProvider } from '@/providers/PRPanelProvider';
-import { loadRepo, publicationName } from '@/lib/repo';
+import { accentColor, loadRepo, publicationName } from '@/lib/repo';
 import { JsonLd, buildWebSiteJsonLd } from '@/lib/json-ld';
 import './globals.css';
 
@@ -165,10 +165,17 @@ export default function RootLayout({
   ].join(' ');
 
   const repo = loadRepo();
+  const accent = accentColor(repo);
+  const themeOverrideCss = accent
+    ? `:root,[data-theme='light'],[data-theme='dark']{--feed-gold:${accent};--accent-tertiary:${accent};}`
+    : null;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {themeOverrideCss && (
+          <style dangerouslySetInnerHTML={{ __html: themeOverrideCss }} />
+        )}
         <JsonLd data={buildWebSiteJsonLd(repo)} />
       </head>
       <body className={fontVariables}>
