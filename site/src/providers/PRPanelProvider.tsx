@@ -220,13 +220,9 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
       closeTimerRef.current = null;
     }
 
-    // Update URL first, synchronously with the user's click. Calling
-    // history.replaceState from inside the close-animation setTimeout
-    // (after the state update) raced Next.js's App Router on Vercel and
-    // crashed the tree with React #300 ("rendered fewer hooks"). Doing
-    // the URL change up front lets Next's router state update batch
-    // cleanly with our setState below.
-    removeStoryParam();
+    // DEBUG: removeStoryParam() temporarily disabled to isolate whether
+    // the history.replaceState call is what triggers React #300 on Vercel.
+    // removeStoryParam();
 
     setState((prev) =>
       prev.isOpen ? { ...prev, isClosing: true } : prev,
