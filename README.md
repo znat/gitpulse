@@ -1,22 +1,88 @@
+<div align="center">
+
 # Gitpulse
 
 `git log` was never meant for humans.
 
-Gitpulse turns your commit history into a beautifully typeset editorial publication — a polished story feed that reads like a magazine, not a terminal. One crafted post per meaningful change, AI-generated and deployed as a static site on every push. No database, no server, no maintenance.
+**Let your code contributions speak for themselves.**  
+The easiest automated way to communicate what your team is shipping.
 
-A changelog your whole team will actually read — engineers, product, design, and leadership, all in the loop on what's shipping without anyone needing to open a terminal, read GitHub PRs, or book a meeting.
+<br>
 
-> See it live — **[Vercel (open)](https://gitpulse-demo.vercel.app/)** · **[GitHub Pages (password-protected)](https://znat.github.io/gitpulse/)** — password: `gitpulse`
+[![npm](https://img.shields.io/npm/v/%40gitpulse%2Fcli?style=flat-square&label=%40gitpulse%2Fcli&color=000000&labelColor=000000&logoColor=white)](https://www.npmjs.com/package/@gitpulse/cli)
+
+<br>
+
+**[Vercel demo →](https://gitpulse-demo.vercel.app/)** &nbsp;&nbsp;·&nbsp;&nbsp; **[GitHub Pages demo →](https://znat.github.io/gitpulse/)** &nbsp;&nbsp;·&nbsp;&nbsp; password: `gitpulse`
+
+<!-- Add screenshot here -->
+
+</div>
+
+---
+
+Gitpulse analyzes your git history and turns it into a polished publication — one story per meaningful change, deployed as a static site on every push.
+
+<table>
+<tr>
+<td>
+
+**AI-generated stories**  
+Reads diffs, PR descriptions, and release notes to write plain-English posts.
+
+</td>
+<td>
+
+**Zero infrastructure**  
+Runs entirely in your CI. No external service, no remote database — your data stays yours.
+
+</td>
+</tr>
+<tr>
+<td>
+
+**Deploy anywhere**  
+GitHub Pages, Vercel, Netlify, Cloudflare Pages, S3 — anything that serves HTML.
+
+</td>
+<td>
+
+**Any LLM provider**  
+OpenAI, Anthropic, OpenRouter, MiniMax, or any OpenAI-compatible endpoint.
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+**Optional password protection**  
+End-to-end encrypted publications — works on any static host, no server required.
+
+</td>
+</tr>
+</table>
+
+---
+
+## How it works
+
+Two pieces:
+
+1. **`@gitpulse/cli`** — a tiny CLI on npm with two subcommands:
+   - `gitpulse analyze` walks your main branch history, calls an LLM for each new commit — which reads the diff, PR description, and release notes to write a plain-English story — and writes the results as JSON.
+   - `gitpulse build` clones the matching gitpulse site at runtime, injects your data, runs `next export`, and produces a static site.
+2. **A static deploy** — Pages, Vercel, Netlify, S3, whatever serves HTML.
+
+State is the deployed site itself. Each run fetches `manifest.json` from your live URL — a record of every commit already analyzed — picks up where it left off, and only processes what's new. No database, no separate branch, no artifact chain.
 
 ---
 
 ## Quickstart
 
-A tiny CLI (`@gitpulse/cli`) runs in your CI pipeline, analyzes new commits, and builds a static site. Deploy it anywhere that serves HTML. No infrastructure, no database.
+You'll need an LLM API key (see [LLM providers](#llm-providers)). Choose your deployment target and follow the steps — or hand the setup instructions directly to a coding agent.
 
+> [!NOTE]
 > Pre-1.0 — the CLI is at `0.x.y` and consumers pin `@gitpulse/cli@0` (npm) and `znat/gitpulse/.github/workflows/publish-pages.yaml@v0` (workflow). When the API stabilises, both move to `@1` / `@v1`.
-
-You'll need a repository secret `OPENAI_API_KEY` with your LLM provider's API key (see [LLM providers](#llm-providers) for supported providers).
 
 <details open>
 <summary><b>GitHub Pages</b> — one-line reusable workflow</summary>
@@ -48,6 +114,23 @@ jobs:
 
 That's it. First run bootstraps from the last 30 days of history; subsequent runs are incremental.
 
+<blockquote>
+<details>
+<summary>Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to GitHub Pages.
+
+Read these before implementing:
+- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
+```
+
+</details>
+</blockquote>
+
 </details>
 
 <details>
@@ -77,6 +160,22 @@ In Vercel's **Project Settings → Environment Variables**, set:
 That's it — Gitpulse auto-detects the repo and site URL from Vercel's environment. Only set `GITPULSE_SITE_URL` if you've connected a custom domain and want canonical links to point at it.
 
 If you'd rather keep secrets out of Vercel and run the build in CI, see the **GitHub Actions → Vercel** option below.
+
+<blockquote>
+<details>
+<summary>Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to Vercel, with Vercel handling the build.
+
+Read these before implementing:
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then update package.json, list every environment variable that needs to be configured in the Vercel dashboard, and include any other required changes.
+```
+
+</details>
+</blockquote>
 
 </details>
 
@@ -143,6 +242,24 @@ If you prefer, you can also run `vercel link` locally to pull the same IDs from 
 
 This is exactly what gitpulse itself uses to dogfood Vercel — see [`.github/workflows/deploy-vercel.yml`](./.github/workflows/deploy-vercel.yml).
 
+<blockquote>
+<details>
+<summary>Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to Vercel, with GitHub Actions handling the build and Vercel acting as the host.
+
+Read these before implementing:
+- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
+- Gitpulse's own Vercel deployment as a reference: https://github.com/znat/gitpulse/blob/main/.github/workflows/deploy-vercel.yml
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
+```
+
+</details>
+</blockquote>
+
 </details>
 
 <details>
@@ -158,6 +275,22 @@ Same shape. In `netlify.toml`:
 
 Set `OPENAI_API_KEY` and `GITHUB_TOKEN` in the Netlify dashboard's environment variables. Netlify's build env (`REPOSITORY_URL`, `URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`) is auto-detected for `GITHUB_REPOSITORY` and `GITPULSE_SITE_URL`; basePath defaults to `''` because Netlify serves at root. No other vars to set. Override `GITPULSE_SITE_URL` only for custom domains.
 
+<blockquote>
+<details>
+<summary>Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to Netlify.
+
+Read these before implementing:
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then create netlify.toml and list every environment variable that needs to be configured in the Netlify dashboard.
+```
+
+</details>
+</blockquote>
+
 </details>
 
 <details>
@@ -168,6 +301,22 @@ In the Cloudflare Pages project:
 - **Build command**: `npm install -g @gitpulse/cli@0 --silent && gitpulse analyze && gitpulse build`
 - **Build output directory**: `.gitpulse/out`
 - **Environment variables**: `OPENAI_API_KEY` + `GITHUB_TOKEN` + `GITHUB_REPOSITORY` (Cloudflare Pages doesn't expose repo info via env, unlike Vercel/Netlify). Site URL is auto-detected from `CF_PAGES_URL`. basePath defaults to `''` since Cloudflare serves at root.
+
+<blockquote>
+<details>
+<summary>Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to Cloudflare Pages.
+
+Read these before implementing:
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then list every setting and environment variable that needs to be configured in the Cloudflare Pages dashboard.
+```
+
+</details>
+</blockquote>
 
 </details>
 
@@ -195,6 +344,23 @@ The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever
 
 - run: aws s3 sync ./.gitpulse/out s3://my-bucket --delete
 ```
+
+<blockquote>
+<details>
+<summary>Copyable instructions for a coding agent</summary>
+
+```
+Set up Gitpulse on this repository to publish a changelog to a custom static host.
+
+Read these before implementing:
+- Available workflow files: https://github.com/znat/gitpulse/tree/main/.github/workflows/
+- Configuration schema and all available options: https://github.com/znat/gitpulse#configuration
+
+Based on the configuration schema, ask me about each available option before implementing. Then create all required files and list every secret and variable that needs to be configured.
+```
+
+</details>
+</blockquote>
 
 </details>
 
@@ -359,9 +525,15 @@ What changes when the variable is set:
 
 After unlock, readers can opt into "remember on this device" — the derived key is cached in `localStorage` so subsequent visits skip the prompt. Same password yields the same key across rebuilds, so the cache stays valid through redeploys and is invalidated automatically when you rotate the password. Without the opt-in, the key lives only for the tab session.
 
-**Incremental builds.** `gitpulse analyze` fetches the previous deployment's state to know which commits it has already covered. For protected sites it also needs `GITPULSE_PASSWORD` (same value) to decrypt that state — wire the same env var into both the analyze and the build steps. A wrong password aborts with a clear error rather than silently re-bootstrapping from scratch.
+> [!IMPORTANT]
+> `gitpulse analyze` fetches the previous deployment's state to know which commits it has already covered. For protected sites it also needs `GITPULSE_PASSWORD` (same value) to decrypt that state — wire the same env var into both the analyze and the build steps. A wrong password aborts with a clear error rather than silently re-bootstrapping from scratch.
 
-**Caveats.** Lose the password and the published archive is unreadable — keep a copy in a password manager and your CI secret store. Toggling protection on or off requires a fresh build and a CDN cache purge so old plaintext copies don't linger. The `_next/static/*` JavaScript bundles remain plaintext (framework code, no story data); only the publication content is encrypted. Story URLs (`/commit/<sha>/<slug>/`, `/pull/<n>/<slug>/`) keep their slug suffix in both modes — the URL path leaks headline-derived words but no protected data.
+**Caveats:**
+
+> [!WARNING]
+> Lose the password and the published archive is unreadable — keep a copy in a password manager and your CI secret store.
+
+Toggling protection on or off requires a fresh build and a CDN cache purge so old plaintext copies don't linger. The `_next/static/*` JavaScript bundles remain plaintext (framework code, no story data); only the publication content is encrypted. Story URLs (`/commit/<sha>/<slug>/`, `/pull/<n>/<slug>/`) keep their slug suffix in both modes — the URL path leaks headline-derived words but no protected data.
 
 ---
 
