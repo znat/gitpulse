@@ -69,8 +69,18 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build site (in-repo CLI)
-        run: node cli/dist/cli.js build
+      - name: Build site from PR source
+        # Build the in-repo site directly instead of going through the CLI's
+        # `build` command. The CLI's build step clones znat/gitpulse@v<cliVersion>
+        # from GitHub, which means PR-only changes to site/ never reach the
+        # preview deploy. Production (deploy-vercel.yml) still uses the CLI so
+        # the consumer-facing build path stays exercised.
+        run: |
+          set -euo pipefail
+          rm -rf site/public/data
+          mkdir -p site/public/data
+          cp -RT .gitpulse/data site/public/data
+          yarn workspace @gitpulse/site build
         env:
           GITPULSE_BASE_PATH: none
           GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
@@ -81,7 +91,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .vercel/output/static
-          cp -RT .gitpulse/out .vercel/output/static
+          cp -RT site/out .vercel/output/static
           cat > .vercel/output/config.json <<'EOF'
           { "version": 3 }
           EOF
