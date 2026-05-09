@@ -22,12 +22,6 @@ function PanelContent() {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
 
-  if (!isOpen) return null;
-
-  const onBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) closePanel();
-  };
-
   // Focus trap and restoration
   useEffect(() => {
     if (!isOpen || isClosing) return;
@@ -91,6 +85,12 @@ function PanelContent() {
       }
     };
   }, [isOpen, isClosing]);
+
+  if (!isOpen) return null;
+
+  const onBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) closePanel();
+  };
 
   return (
     <>
