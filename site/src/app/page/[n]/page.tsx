@@ -32,6 +32,10 @@ export function generateStaticParams(): RouteParams[] {
   );
   const params: RouteParams[] = [];
   for (let n = 2; n <= totalPages; n++) params.push({ n: String(n) });
+  // Next.js `output: export` rejects an empty generateStaticParams as if the
+  // function were missing. When there is only one feed page, emit a
+  // placeholder that the route handler short-circuits via notFound().
+  if (params.length === 0) params.push({ n: '2' });
   return params;
 }
 
