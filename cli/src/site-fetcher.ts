@@ -1,15 +1,85 @@
 import { writeFileSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { webcrypto } from 'node:crypto';
 import type { Release, ReleaseManifest, Story } from './types.ts';
 import type { StateData, ManifestData } from './state.ts';
 import { pMap } from './pmap.ts';
 import { encodeFilename, decodeFilename } from './release-render.ts';
 
+const PBKDF2_ITERATIONS = 600_000;
+// Must match site/scripts/encrypt.mjs SALT exactly.
+const SALT = new Uint8Array(16);
+
+interface Envelope {
+  iv: string;
+  ct: string;
+}
+
+function isEnvelope(x: unknown): x is Envelope {
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    typeof (x as Envelope).iv === 'string' &&
+    typeof (x as Envelope).ct === 'string'
+  );
+}
+
+function b64decode(s: string): Uint8Array<ArrayBuffer> {
+  const buf = Buffer.from(s, 'base64');
+  const out = new Uint8Array(new ArrayBuffer(buf.length));
+  out.set(buf);
+  return out;
+}
+
+async function deriveKey(password: string): Promise<webcrypto.CryptoKey> {
+  const baseKey = await webcrypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey'],
+  );
+  return webcrypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: SALT, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt'],
+  );
+}
+
+export class WrongGitpulsePasswordError extends Error {
+  constructor() {
+    super(
+      'Wrong GITPULSE_PASSWORD for the deployed site. ' +
+        'Either rotate the password in your CI environment or update the deployed site.',
+    );
+    this.name = 'WrongGitpulsePasswordError';
+  }
+}
+
 export class SiteFetcher {
   private siteUrl: string;
+  private keyPromise: Promise<webcrypto.CryptoKey> | null = null;
 
-  constructor(siteUrl: string) {
+  constructor(siteUrl: string, opts: { password?: string } = {}) {
     this.siteUrl = siteUrl.endsWith('/') ? siteUrl : `${siteUrl}/`;
+    if (opts.password) this.keyPromise = deriveKey(opts.password);
+  }
+
+  private async decryptEnvelope(env: Envelope): Promise<string> {
+    const key = await this.keyPromise!;
+    try {
+      const plain = await webcrypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: b64decode(env.iv) },
+        key,
+        b64decode(env.ct),
+      );
+      return new TextDecoder().decode(plain);
+    } catch {
+      // AES-GCM auth-tag mismatch is the only way decrypt can fail here.
+      throw new WrongGitpulsePasswordError();
+    }
   }
 
   async fetchState(): Promise<StateData | null> {
@@ -88,10 +158,27 @@ export class SiteFetcher {
 
   private async fetchJson<T>(path: string): Promise<T | null> {
     const url = `${this.siteUrl}${path}`;
+    let resp: Response;
     try {
-      const resp = await fetch(url);
-      if (!resp.ok) return null;
-      return (await resp.json()) as T;
+      resp = await fetch(url);
+    } catch {
+      return null;
+    }
+    if (!resp.ok) return null;
+    let body: unknown;
+    try {
+      body = await resp.json();
+    } catch {
+      return null;
+    }
+    if (!this.keyPromise) return body as T;
+    if (!isEnvelope(body)) {
+      // The site is unprotected (or the file is plaintext) — accept as-is.
+      return body as T;
+    }
+    const plain = await this.decryptEnvelope(body); // throws WrongGitpulsePasswordError on mismatch
+    try {
+      return JSON.parse(plain) as T;
     } catch {
       return null;
     }

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "data:fetch": "node scripts/fetch-local-data.mjs",
-    "build": "next build --webpack && node scripts/rename-og-png.mjs",
+    "build": "next build --webpack && node scripts/rename-og-png.mjs && node scripts/encrypt.mjs",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

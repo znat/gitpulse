@@ -1,33 +1,22 @@
-# gitpulse
+# Gitpulse
 
-**An editorial story feed for your repo's pull requests and direct pushes — published to GitHub Pages, Vercel, Netlify, or anywhere else you serve a static site.**
+`git log` was never meant for humans.
 
-Every push, gitpulse walks your default branch, classifies each commit, writes a short editorial-style story for each, and rebuilds a static feed at your chosen URL.
+Gitpulse turns your commit history into a beautifully typeset editorial publication — a polished story feed that reads like a magazine, not a terminal. One crafted post per meaningful change, AI-generated and deployed as a static site on every push. No database, no server, no maintenance.
 
-No database. No external services beyond GitHub and your LLM provider.
+A changelog your whole team will actually read — engineers, product, design, and leadership, all in the loop on what's shipping without anyone needing to open a terminal, read GitHub PRs, or book a meeting.
 
-> See it running on this repo: **https://znat.github.io/gitpulse/**
-
----
-
-## How it works
-
-Two pieces:
-
-1. **`@gitpulse/cli`** — a tiny CLI on npm with two subcommands:
-   - `gitpulse analyze` walks git history, calls an LLM for each new commit, writes JSON to `./.gitpulse/data/`.
-   - `gitpulse build` clones the matching gitpulse site at runtime, injects your data, runs `next export`, writes a static site to `./.gitpulse/out/`.
-2. **A static deploy** — Pages, Vercel, Netlify, S3, whatever serves HTML.
-
-State is the deployed site itself. Each run fetches the previous `data/manifest.json` from your live URL, picks up where it left off, and only analyzes new commits. No database, no separate branch, no artifact chain.
+> See it live — **[Vercel (open)](https://gitpulse-demo.vercel.app/)** · **[GitHub Pages (password-protected)](https://znat.github.io/gitpulse/)** — password: `gitpulse`
 
 ---
 
 ## Quickstart
 
+A tiny CLI (`@gitpulse/cli`) runs in your CI pipeline, analyzes new commits, and builds a static site. Deploy it anywhere that serves HTML. No infrastructure, no database.
+
 > Pre-1.0 — the CLI is at `0.x.y` and consumers pin `@gitpulse/cli@0` (npm) and `znat/gitpulse/.github/workflows/publish-pages.yaml@v0` (workflow). When the API stabilises, both move to `@1` / `@v1`.
 
-You'll need a repository secret `OPENAI_API_KEY` (or whichever provider's key — see [LLM providers](#llm-providers) below).
+You'll need a repository secret `OPENAI_API_KEY` with your LLM provider's API key (see [LLM providers](#llm-providers) for supported providers).
 
 <details open>
 <summary><b>GitHub Pages</b> — one-line reusable workflow</summary>
@@ -64,13 +53,13 @@ That's it. First run bootstraps from the last 30 days of history; subsequent run
 <details>
 <summary><b>Vercel</b> — Vercel-side build (simplest)</summary>
 
-Vercel auto-builds on every push if you connect the repo. Make gitpulse part of that build:
+Vercel auto-builds on every push if you connect the repo. Make Gitpulse part of that build:
 
 ```json
 // package.json
 {
   "scripts": {
-    "build": "gitpulse analyze && gitpulse build && next build"
+    "build": "gitpulse analyze && gitpulse build"
   },
   "devDependencies": {
     "@gitpulse/cli": "^0"
@@ -85,14 +74,14 @@ In Vercel's **Project Settings → Environment Variables**, set:
 | `OPENAI_API_KEY` | Your provider key |
 | `GITHUB_TOKEN` | A fine-grained token with `contents: read` on the repo (so the analyzer can fetch PR / release context) |
 
-That's it. Vercel exposes `VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG` (used to auto-detect `GITHUB_REPOSITORY`) and `VERCEL_URL` / `VERCEL_PROJECT_PRODUCTION_URL` (used to auto-detect `GITPULSE_SITE_URL`); the basePath defaults to `''` because Vercel serves at root. No `GITHUB_REPOSITORY`, `GITPULSE_BASE_PATH`, or `GITPULSE_SITE_URL` to set manually. Override only if you've connected a custom domain and want canonical links to point at it — set `GITPULSE_SITE_URL=https://my.example.com`.
+That's it — Gitpulse auto-detects the repo and site URL from Vercel's environment. Only set `GITPULSE_SITE_URL` if you've connected a custom domain and want canonical links to point at it.
 
-For Vercel's auto-detection to find `next build` output, make sure the framework preset is "Next.js" and the build output is `out` (or however your `next.config.js` is configured).
+If you'd rather keep secrets out of Vercel and run the build in CI, see the **GitHub Actions → Vercel** option below.
 
 </details>
 
 <details>
-<summary><b>Vercel</b> — CI builds, Vercel hosts (zero env vars on Vercel)</summary>
+<summary><b>Vercel</b> — GitHub Actions builds, Vercel hosts (secrets stay in CI)</summary>
 
 If you'd rather keep all secrets in your CI runner and have Vercel act as a pure CDN, run analyze + build in GitHub Actions and ship the prebuilt output via `vercel deploy --prebuilt`. Vercel runs no build, sees no LLM keys, and needs no env vars.
 
@@ -242,13 +231,13 @@ Optional file at your repo root. All fields are optional; omit any you don't nee
 
 | Var | What it is |
 |---|---|
-| `OPENAI_API_KEY` | API key for whichever LLM provider you've configured (the env name is fixed, the value can be a MiniMax / OpenRouter / Anthropic / etc. key). |
-| `GITHUB_REPOSITORY` | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel (`VERCEL_GIT_REPO_OWNER` + `VERCEL_GIT_REPO_SLUG`) and Netlify (parsed from `REPOSITORY_URL`); set manually on Cloudflare Pages and other targets. |
+| `OPENAI_API_KEY` | Your LLM provider's API key. The variable name is a fixed convention — the value is whatever key your chosen provider issues (OpenAI, Anthropic, MiniMax, OpenRouter, etc.). |
 
 ### Common optional env vars
 
 | Var | Default | Purpose |
 |---|---|---|
+| `GITHUB_REPOSITORY` | auto-detected | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel and Netlify. Set manually on Cloudflare Pages and other targets. |
 | `GITHUB_TOKEN` | (none) | Enables PR / release context lookups via GraphQL. Without it, every commit is treated as a direct push. |
 | `AI_MODEL` | `gpt-4o-mini` | Model id used for story generation. |
 | `AI_PROTOCOL` | `openai` | `openai` or `anthropic`. |
@@ -258,6 +247,7 @@ Optional file at your repo root. All fields are optional; omit any you don't nee
 | `GITPULSE_SITE_URL` | auto-detected | Absolute URL of the deployed site (used for canonical URLs and incremental state restore). Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. Set explicitly to override for custom domains. |
 | `GITPULSE_DATA_DIR` | `./.gitpulse/data` | Where `analyze` writes JSON. `build` reads from here. |
 | `GITPULSE_OUT_DIR` | `./.gitpulse/out` | Where `build` writes the static site. |
+| `GITPULSE_PASSWORD` | (none) | If set, the published site is encrypted end-to-end and visitors must enter the password to read. See [Password protection](#password-protection). |
 
 ### LLM providers
 
@@ -351,6 +341,27 @@ OPENAI_API_KEY=<your anthropic key>
 `AI_BASE_URL` isn't needed — uses Anthropic's default endpoint.
 
 </details>
+
+---
+
+## Password protection
+
+Set `GITPULSE_PASSWORD` in the build environment and the published site is encrypted end-to-end — every page and every JSON data file. Readers see a single unlock screen the first time they visit; the rest of the publication reads as normal afterwards. Works on any static host (Vercel, GitHub Pages, Netlify, Cloudflare Pages) — the protection lives in the static files, not in the host.
+
+Crypto: PBKDF2-SHA256 (600 000 iterations) → AES-GCM 256 via the browser's Web Crypto. The password never ships to the client; only its derivative key material does. AES-GCM authenticates every decrypt, so a wrong password is rejected loudly, not silently.
+
+What changes when the variable is set:
+
+- Every emitted `.html` is replaced with a small unlock shell that decrypts the original document client-side after the password is entered.
+- Every `data/**/*.json` becomes an `{iv, ct}` envelope; the runtime decrypts as it fetches.
+- `opengraph-image*.png`, `sitemap.xml`, and Next's RSC navigation `.txt` payloads are deleted post-build so they can't leak rendered story content.
+- `robots.txt` is overwritten with `Disallow: /`.
+
+After unlock, readers can opt into "remember on this device" — the derived key is cached in `localStorage` so subsequent visits skip the prompt. Same password yields the same key across rebuilds, so the cache stays valid through redeploys and is invalidated automatically when you rotate the password. Without the opt-in, the key lives only for the tab session.
+
+**Incremental builds.** `gitpulse analyze` fetches the previous deployment's state to know which commits it has already covered. For protected sites it also needs `GITPULSE_PASSWORD` (same value) to decrypt that state — wire the same env var into both the analyze and the build steps. A wrong password aborts with a clear error rather than silently re-bootstrapping from scratch.
+
+**Caveats.** Lose the password and the published archive is unreadable — keep a copy in a password manager and your CI secret store. Toggling protection on or off requires a fresh build and a CDN cache purge so old plaintext copies don't linger. The `_next/static/*` JavaScript bundles remain plaintext (framework code, no story data); only the publication content is encrypted. Story URLs (`/commit/<sha>/<slug>/`, `/pull/<n>/<slug>/`) keep their slug suffix in both modes — the URL path leaks headline-derived words but no protected data.
 
 ---
 

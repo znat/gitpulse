@@ -12,6 +12,57 @@ import {
 import type { Story } from '@/lib/stories';
 import { basePath } from '@/lib/base-path';
 
+const IS_ENCRYPTED = process.env.NEXT_PUBLIC_GITPULSE_ENCRYPTED === '1';
+
+interface Envelope {
+  iv: string;
+  ct: string;
+}
+
+function b64decode(s: string): Uint8Array<ArrayBuffer> {
+  const bin = atob(s);
+  const arr = new Uint8Array(new ArrayBuffer(bin.length));
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+
+function waitForKey(timeoutMs = 5_000): Promise<CryptoKey> {
+  const KEY_GLOBAL = '__gitpulseKey';
+  const existing = (window as unknown as Record<string, unknown>)[KEY_GLOBAL];
+  if (existing instanceof CryptoKey) return Promise.resolve(existing);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      window.removeEventListener('gp:unlocked', handler);
+      reject(new Error('Timed out waiting for unlock key'));
+    }, timeoutMs);
+    function handler() {
+      const k = (window as unknown as Record<string, unknown>)[KEY_GLOBAL];
+      if (k instanceof CryptoKey) {
+        clearTimeout(timer);
+        window.removeEventListener('gp:unlocked', handler);
+        resolve(k);
+      }
+    }
+    window.addEventListener('gp:unlocked', handler);
+  });
+}
+
+async function fetchStory(storyId: string): Promise<Story> {
+  const res = await fetch(
+    `${basePath}/data/stories/${encodeURIComponent(storyId)}.json`,
+  );
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!IS_ENCRYPTED) return (await res.json()) as Story;
+  const env = (await res.json()) as Envelope;
+  const key = await waitForKey();
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: b64decode(env.iv) },
+    key,
+    b64decode(env.ct),
+  );
+  return JSON.parse(new TextDecoder().decode(plain)) as Story;
+}
+
 interface PRPanelState {
   isOpen: boolean;
   isClosing: boolean;
@@ -130,11 +181,7 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
     });
     pushStoryParam(storyId);
 
-    fetch(`${basePath}/data/stories/${encodeURIComponent(storyId)}.json`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        return res.json() as Promise<Story>;
-      })
+    fetchStory(storyId)
       .then((story) => {
         cacheRef.current.set(storyId, story);
         setState((prev) =>
