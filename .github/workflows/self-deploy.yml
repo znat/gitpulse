@@ -1,13 +1,24 @@
 name: Self-deploy
 
-# Dogfoods the published @gitpulse/cli + the public publish-pages.yaml
-# reusable workflow exactly as external consumers experience them.
-# Every push to main hits npx @gitpulse/cli@0 (analyze + build) →
-# checkpoint that the consumer flow stays green.
+# Builds the in-repo gitpulse and deploys it to GitHub Pages with
+# password protection enabled. This is the public protected demo at
+# https://znat.github.io/gitpulse/ — readers enter the dummy password
+# (`gitpulse`, also published in the README) to unlock.
 #
-# Local-workspace testing (against bleeding-edge code, not the published
-# version) happens via `yarn workspace @gitpulse/cli analyze` during dev,
-# and via the CI typecheck/test/build job in ci.yml on every PR.
+# Why inline (not the reusable publish-pages.yaml@main workflow): the
+# reusable workflow installs the published @gitpulse/cli@0 and runs
+# `gitpulse build`, which clones znat/gitpulse at v<cli-version> and
+# builds inside that clone. Versions before encryption support shipped
+# would silently produce a plaintext site. Inlining pins the deploy to
+# this branch's source so the encryption pipeline is what's actually
+# running.
+#
+# Tradeoff: the reusable consumer-facing publish-pages.yaml is no
+# longer exercised on every push to main. Consumer-cli coverage moves
+# to deploy-vercel.yml (which uses npm install -g @gitpulse/cli@0).
+# Reusable-workflow coverage is currently a gap; revisit when the
+# published cli ships with encryption support and we can add an
+# optional `password` secret to publish-pages.yaml.
 
 on:
   push:
@@ -16,20 +27,78 @@ on:
     types: [published]
   workflow_dispatch:
 
-# Reusable workflows can't elevate beyond the caller's GITHUB_TOKEN scope —
-# pages: write + id-token: write must be granted here for publish-pages.yaml's
-# inner deploy job to succeed.
 permissions:
   contents: read
   pages: write
   id-token: write
 
+concurrency:
+  group: gitpulse-pages
+  cancel-in-progress: false
+
 jobs:
-  publish:
-    uses: znat/gitpulse/.github/workflows/publish-pages.yaml@main
-    with:
-      ai-protocol: openai
-      ai-base-url: https://api.minimax.io/v1
-      ai-model: MiniMax-M2.7
-    secrets:
-      OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install + build in-repo CLI
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @gitpulse/cli build
+
+      - name: Analyze (in-repo CLI)
+        run: node cli/dist/cli.js analyze
+        env:
+          AI_PROTOCOL: openai
+          AI_BASE_URL: https://api.minimax.io/v1
+          AI_MODEL: MiniMax-M2.7
+          # Restore state from the unprotected Vercel mirror — stories
+          # are a function of git history, identical between mirrors,
+          # so the manifest fetched here is correct for this build too.
+          # Avoids decrypting our own encrypted Pages deploy on every
+          # run and side-steps the chicken-and-egg of needing a prior
+          # protected deploy to exist.
+          GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
+          OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Stage analyzer output for the in-repo site
+        run: |
+          set -euo pipefail
+          mkdir -p site/public/data
+          cp -RT .gitpulse/data site/public/data
+
+      - name: Build site (in-repo, encrypted)
+        run: yarn workspace @gitpulse/site build
+        env:
+          # Default 'auto' derives /<repo> from GITHUB_REPOSITORY for
+          # project Pages. Leaving it unset keeps the existing path.
+          # Canonical URL points at the actual Pages address.
+          GITPULSE_SITE_URL: https://znat.github.io/gitpulse/
+          # Triggers encrypt.mjs at the end of `next build`.
+          GITPULSE_PASSWORD: ${{ secrets.GITPULSE_PASSWORD }}
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./site/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
