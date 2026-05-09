@@ -291,6 +291,12 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
   }, [openPanel]);
 
   // Document-level click interception for /pull/<n>/ and /commit/<sha>/ links.
+  // Registered in CAPTURE phase so we run before Next.js's <Link> onClick
+  // handler (which is delegated through React's root listener and would
+  // otherwise call router.push and replace the feed underneath the panel
+  // with the standalone story page). On story links we stopPropagation so
+  // the click never reaches React's delegated listener — every other click
+  // on the page is left untouched.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       // Let the user open in a new tab as expected.
@@ -313,10 +319,11 @@ export function PRPanelProvider({ children }: { children: ReactNode }) {
       if (!storyId) return;
 
       e.preventDefault();
+      e.stopPropagation();
       openPanel(storyId);
     };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
   }, [openPanel]);
 
   // Open from ?story= on first mount (deep links / refresh).
