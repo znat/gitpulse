@@ -30,6 +30,10 @@ name: Deploy to Vercel
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - LICENSE
+      - .gitignore
   release:
     types: [published]
   workflow_dispatch:

@@ -27,36 +27,41 @@ Gitpulse analyzes your git history and turns it into a polished publication — 
 <tr>
 <td>
 
-**AI-generated stories**  
-Reads diffs, PR descriptions, and release notes to write plain-English posts.
+**AI-generated stories**
+
+_Reads diffs, PR descriptions, and release notes to write plain-English posts._
 
 </td>
 <td>
 
-**Zero infrastructure**  
-Runs entirely in your CI. No external service, no remote database — your data stays yours.
+**Zero infrastructure**
+
+_Runs entirely in your CI. No external service, no remote database — your data stays yours._
 
 </td>
 </tr>
 <tr>
 <td>
 
-**Deploy anywhere**  
-GitHub Pages, Vercel, Netlify, Cloudflare Pages, S3 — anything that serves HTML.
+**Deploy anywhere**
+
+_GitHub Pages, Vercel, Netlify, Cloudflare Pages, S3 — anything that serves HTML._
 
 </td>
 <td>
 
-**Any LLM provider**  
-OpenAI, Anthropic, OpenRouter, MiniMax, or any OpenAI-compatible endpoint.
+**Any LLM provider**
+
+_OpenAI, Anthropic, OpenRouter, MiniMax, or any OpenAI-compatible endpoint._
 
 </td>
 </tr>
 <tr>
 <td colspan="2">
 
-**Optional password protection**  
-End-to-end encrypted publications — works on any static host, no server required.
+**Optional password protection**
+
+_End-to-end encrypted publications — works on any static host, no server required._
 
 </td>
 </tr>

@@ -21,6 +21,10 @@ name: Deploy PR Preview to Vercel
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**.md'
+      - LICENSE
+      - .gitignore
 
 permissions:
   contents: read
