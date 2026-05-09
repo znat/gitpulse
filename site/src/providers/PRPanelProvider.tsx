@@ -101,6 +101,11 @@ const STORY_PARAM = 'story';
 // re-merge in time and hides the bug.
 function pushStoryParam(storyId: string) {
   const url = new URL(window.location.href);
+  // Skip if the URL already matches — popstate (back/forward) and the
+  // initial deep-link mount both call openPanel for a story whose id
+  // already lives in the URL bar. Pushing again would create a duplicate
+  // history entry and force the user to press Back twice to leave.
+  if (url.searchParams.get(STORY_PARAM) === storyId) return;
   url.searchParams.set(STORY_PARAM, storyId);
   const prev = (window.history.state ?? {}) as Record<string, unknown>;
   window.history.pushState({ ...prev, prPanel: true }, '', url.toString());
