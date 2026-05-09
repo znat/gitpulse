@@ -4,8 +4,7 @@ export function Footer() {
     <footer className="border-t border-border-light mt-16 px-6 pt-10 pb-12">
       <div className="flex flex-col items-center gap-3 text-center">
         <p className="font-mono text-xs tracking-wide text-muted leading-relaxed">
-          <span className="text-foreground-secondary font-medium">Gitpulse</span>
-          {' — '}This publication is generated automatically from git history.
+          Generated automatically from git history.
         </p>
         <a
           href="https://github.com/znat/gitpulse"
