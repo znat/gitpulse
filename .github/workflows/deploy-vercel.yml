@@ -95,7 +95,10 @@ jobs:
           # 0.1.56 is published on npm, so `npm i -g vercel@latest` 404s. Pin
           # to the last known good version until upstream republishes.
           npm install -g vercel@53.2.0
-          vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+          # --archive=tgz bundles the upload into a single tarball — without
+          # it we hit the per-file rate limit ("more than 5000, code:
+          # api-upload-free") fast on a many-files static export.
+          vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN" --archive=tgz
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}

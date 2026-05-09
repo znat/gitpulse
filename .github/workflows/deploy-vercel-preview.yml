@@ -97,7 +97,10 @@ jobs:
           npm install -g vercel@53.2.0
           # VERCEL_TOKEN is read from env — passing --token would expose it
           # in /proc/<pid>/cmdline.
-          URL=$(vercel deploy --prebuilt --yes)
+          # --archive=tgz bundles the upload into a single tarball — without
+          # it we hit the per-file rate limit ("more than 5000, code:
+          # api-upload-free") fast on a many-files static export.
+          URL=$(vercel deploy --prebuilt --yes --archive=tgz)
           echo "url=$URL" >> "$GITHUB_OUTPUT"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
