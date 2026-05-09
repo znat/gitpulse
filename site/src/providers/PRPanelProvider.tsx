@@ -91,17 +91,27 @@ const PRPanelContext = createContext<PRPanelContextValue | null>(null);
 const CLOSE_ANIMATION_MS = 250;
 const STORY_PARAM = 'story';
 
+// Preserve whatever already lives on history.state — notably Next.js's
+// `__NA` and `__PRIVATE_NEXTJS_INTERNALS_TREE`. Replacing the state with a
+// bare `{ prPanel: ... }` object wipes those keys; Next's App Router then
+// takes a different render path on the next tick that calls more hooks
+// than the previous render, throwing React error #310. Reproduces on
+// Vercel previews (where the Vercel Live toolbar racing against Next's
+// pushState wrapper makes the wipe lethal); local `serve` happens to
+// re-merge in time and hides the bug.
 function pushStoryParam(storyId: string) {
   const url = new URL(window.location.href);
   url.searchParams.set(STORY_PARAM, storyId);
-  window.history.pushState({ prPanel: true }, '', url.toString());
+  const prev = (window.history.state ?? {}) as Record<string, unknown>;
+  window.history.pushState({ ...prev, prPanel: true }, '', url.toString());
 }
 
 function removeStoryParam() {
   const url = new URL(window.location.href);
   if (!url.searchParams.has(STORY_PARAM)) return;
   url.searchParams.delete(STORY_PARAM);
-  window.history.replaceState({ prPanel: false }, '', url.toString());
+  const prev = (window.history.state ?? {}) as Record<string, unknown>;
+  window.history.replaceState({ ...prev, prPanel: false }, '', url.toString());
 }
 
 // Map a story-detail href to the story id used as the JSON filename:
