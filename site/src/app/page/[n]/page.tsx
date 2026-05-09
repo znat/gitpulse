@@ -11,11 +11,7 @@ import {
   publicationSubtitle,
 } from '@/lib/repo';
 import { buildHomeMetadata, canonicalUrl } from '@/lib/seo';
-import {
-  feedPagePath,
-  mergedSortedDates,
-  paginateFeed,
-} from '@/lib/pagination';
+import { feedPagePath, paginateFeed } from '@/lib/pagination';
 import { FeedHeader } from '@/components/FeedHeader';
 import { SectionNav } from '@/components/SectionNav';
 import { HomepageFeed } from '@/components/HomepageFeed';
@@ -28,10 +24,14 @@ export function generateStaticParams(): RouteParams[] {
   const repo = loadRepo();
   const days = groupByDay(loadStories());
   const releasesByDay = groupReleasesByDay(loadReleases());
-  const dates = mergedSortedDates(days, releasesByDay);
-  const total = Math.max(1, Math.ceil(dates.length / daysPerPage(repo)));
+  const { totalPages } = paginateFeed(
+    days,
+    releasesByDay,
+    daysPerPage(repo),
+    1,
+  );
   const params: RouteParams[] = [];
-  for (let n = 2; n <= total; n++) params.push({ n: String(n) });
+  for (let n = 2; n <= totalPages; n++) params.push({ n: String(n) });
   return params;
 }
 

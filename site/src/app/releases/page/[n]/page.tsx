@@ -21,12 +21,13 @@ interface RouteParams {
 export function generateStaticParams(): RouteParams[] {
   const repo = loadRepo();
   const releases = loadReleases();
-  const total = Math.max(
+  const { totalPages } = paginateReleases(
+    releases,
+    releasesPerPage(repo),
     1,
-    Math.ceil(releases.length / releasesPerPage(repo)),
   );
   const params: RouteParams[] = [];
-  for (let n = 2; n <= total; n++) params.push({ n: String(n) });
+  for (let n = 2; n <= totalPages; n++) params.push({ n: String(n) });
   return params;
 }
 

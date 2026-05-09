@@ -35,6 +35,7 @@ export function SectionNav() {
             <Link
               key={link.href}
               href={link.href}
+              aria-current={isActive ? 'page' : undefined}
               className={`relative py-2.5 font-feed-mono text-[0.625rem] uppercase tracking-[0.15em] no-underline transition-colors duration-200 ${
                 isActive
                   ? 'text-foreground'
