@@ -4,7 +4,12 @@
 
 import type { Metadata } from 'next';
 import { loadReleases } from '@/lib/releases-loader';
-import { loadRepo, publicationName, releasesPerPage } from '@/lib/repo';
+import {
+  loadRepo,
+  publicationName,
+  publicationSubtitle,
+  releasesPerPage,
+} from '@/lib/repo';
 import {
   buildReleasesListMetadata,
   canonicalUrl,
@@ -12,6 +17,8 @@ import {
 import { JsonLd, buildReleasesListJsonLd } from '@/lib/json-ld';
 import { releasePath, releasesIndexPath } from '@/lib/urls';
 import { paginateReleases, releasesPagePath } from '@/lib/pagination';
+import { FeedHeader } from '@/components/FeedHeader';
+import { SectionNav } from '@/components/SectionNav';
 import { ReleasesListHero } from '@/components/ReleasesListHero';
 import { ReleasesListStandardCard } from '@/components/ReleasesListStandardCard';
 import { ReleasesListCompactRow } from '@/components/ReleasesListCompactRow';
@@ -28,13 +35,18 @@ export default function ReleasesIndexPage() {
   if (releases.length === 0) {
     return (
       <main className="min-h-screen bg-background">
+        <FeedHeader
+          feedTitle={publicationName(repo)}
+          feedSubtitle={publicationSubtitle(repo)}
+        />
+        <SectionNav />
         <div className="max-w-2xl mx-auto px-6 py-20 text-center">
           <div className="font-feed-mono text-[0.6875rem] uppercase tracking-[0.2em] text-feed-gold mb-4">
             Release Editions
           </div>
-          <h1 className="font-feed-display text-3xl text-foreground mb-4">
+          <h2 className="font-feed-display text-3xl text-foreground mb-4">
             No editions yet
-          </h1>
+          </h2>
           <p className="font-feed-body text-foreground-secondary">
             Special editions appear here when you publish a release on GitHub.
           </p>
@@ -61,14 +73,11 @@ export default function ReleasesIndexPage() {
   return (
     <main className="min-h-screen bg-background">
       <JsonLd data={listJsonLd} />
-      <div className="max-w-[1200px] mx-auto px-6 pt-10 pb-6 text-center">
-        <p className="font-feed-mono text-[13px] tracking-wide text-muted mb-3">
-          Release notes &amp; changelog
-        </p>
-        <h1 className="font-feed-display text-4xl md:text-5xl text-foreground mb-2">
-          {publicationName(repo)} Releases
-        </h1>
-      </div>
+      <FeedHeader
+        feedTitle={publicationName(repo)}
+        feedSubtitle={publicationSubtitle(repo)}
+      />
+      <SectionNav />
       <div className="max-w-3xl mx-auto px-6">
         <EditionsDivider />
         {hero && <ReleasesListHero release={hero} />}
