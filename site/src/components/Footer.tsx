@@ -1,5 +1,13 @@
+import { getBaseUrl } from '@/lib/seo';
+
 export function Footer() {
   const year = new Date().getFullYear();
+  const baseUrl = getBaseUrl();
+  const utmSource = baseUrl
+    ? new URL(baseUrl).hostname
+    : 'gitpulse-publication';
+  const href = `https://github.com/znat/gitpulse?utm_source=${encodeURIComponent(utmSource)}&utm_medium=footer&utm_campaign=get-your-own`;
+
   return (
     <footer className="border-t border-border-light mt-16 px-6 pt-10 pb-12">
       <div className="flex flex-col items-center gap-3 text-center">
@@ -7,7 +15,7 @@ export function Footer() {
           Generated automatically from git history.
         </p>
         <a
-          href="https://github.com/znat/gitpulse?utm_source=gitpulse-publication&utm_medium=footer&utm_campaign=get-your-own"
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
           className="group inline-flex items-center gap-2 font-mono text-xs tracking-widest text-accent hover:opacity-75 hover:no-underline transition-opacity duration-200"
