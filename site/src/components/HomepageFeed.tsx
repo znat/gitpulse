@@ -10,13 +10,21 @@ import { PRFeedItem } from '@/components/PRFeedItem';
 import { FixesBrief } from '@/components/FixesBrief';
 import { HousekeepingDrawer } from '@/components/HousekeepingDrawer';
 import { SpecialEditionCard } from '@/components/SpecialEditionCard';
+import { PaginationNav } from '@/components/PaginationNav';
 
 interface HomepageFeedProps {
   days: StoryDay[];
   releasesByDay?: ReleasesByDay;
+  prevHref?: string;
+  nextHref?: string;
 }
 
-export function HomepageFeed({ days, releasesByDay = {} }: HomepageFeedProps) {
+export function HomepageFeed({
+  days,
+  releasesByDay = {},
+  prevHref,
+  nextHref,
+}: HomepageFeedProps) {
   const hasContent = days.length > 0 || Object.keys(releasesByDay).length > 0;
   if (!hasContent) return <EmptyHomepage />;
 
@@ -53,6 +61,7 @@ export function HomepageFeed({ days, releasesByDay = {} }: HomepageFeedProps) {
           </div>
         );
       })}
+      <PaginationNav prevHref={prevHref} nextHref={nextHref} />
     </div>
   );
 }

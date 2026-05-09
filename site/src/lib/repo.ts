@@ -8,7 +8,17 @@ export interface RepoInfo {
   url: string;
   publicationTitle?: string;
   publicationSubtitle?: string;
+  daysPerPage?: number;
+  releasesPerPage?: number;
+  theme?: {
+    accentColor?: string;
+  };
 }
+
+export const DEFAULT_DAYS_PER_PAGE = 2;
+export const DEFAULT_RELEASES_PER_PAGE = 10;
+
+const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 const REPO_PATH = join(process.cwd(), 'public/data/repo.json');
 
@@ -38,4 +48,23 @@ export function publicationName(repo: RepoInfo): string {
 
 export function publicationSubtitle(repo: RepoInfo): string {
   return repo.publicationSubtitle ?? `${repo.owner}/${repo.repo} · Development Activity Intelligence`;
+}
+
+export function daysPerPage(repo: RepoInfo): number {
+  const v = repo.daysPerPage;
+  return typeof v === 'number' && Number.isInteger(v) && v > 0
+    ? v
+    : DEFAULT_DAYS_PER_PAGE;
+}
+
+export function releasesPerPage(repo: RepoInfo): number {
+  const v = repo.releasesPerPage;
+  return typeof v === 'number' && Number.isInteger(v) && v > 0
+    ? v
+    : DEFAULT_RELEASES_PER_PAGE;
+}
+
+export function accentColor(repo: RepoInfo): string | null {
+  const v = repo.theme?.accentColor;
+  return typeof v === 'string' && HEX_COLOR.test(v) ? v : null;
 }

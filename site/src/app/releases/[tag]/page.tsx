@@ -4,6 +4,7 @@
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { loadReleases, loadRelease } from '@/lib/releases-loader';
 import { loadStories } from '@/lib/stories-loader';
 import type { Story } from '@/lib/stories';
@@ -76,6 +77,14 @@ export default async function ReleaseDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-background">
       <JsonLd data={jsonLd} />
+      <div className="max-w-[1080px] mx-auto px-6 pt-6">
+        <Link
+          href="/releases/"
+          className="font-feed-mono text-xs uppercase tracking-[0.15em] text-muted hover:text-accent no-underline"
+        >
+          ← Releases
+        </Link>
+      </div>
       <ReleaseEditionHero release={release} />
       {release.prCount > 0 && <ReleaseEditionStatBar release={release} />}
       <div className="max-w-[1080px] mx-auto px-6 pb-20">

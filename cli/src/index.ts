@@ -103,6 +103,9 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
       : { owner, repo, description: '', url: `https://github.com/${owner}/${repo}` }),
     publicationTitle: cfg.publicationTitle,
     publicationSubtitle: cfg.publicationSubtitle,
+    daysPerPage: cfg.daysPerPage,
+    releasesPerPage: cfg.releasesPerPage,
+    theme: cfg.theme,
   };
   writeJson(`${cfg.dataDir}/repo.json`, repoInfo);
 

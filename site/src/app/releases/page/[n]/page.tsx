@@ -1,8 +1,5 @@
-// /releases/ — list page. Lifted from gitsky's
-// apps/web/app/[owner]/[repo]/releases/page.tsx. Single-repo: no
-// owner/repo params, no DB — reads from public/data/releases.
-
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { loadReleases } from '@/lib/releases-loader';
 import { loadRepo, publicationName, releasesPerPage } from '@/lib/repo';
 import {
@@ -17,33 +14,40 @@ import { ReleasesListStandardCard } from '@/components/ReleasesListStandardCard'
 import { ReleasesListCompactRow } from '@/components/ReleasesListCompactRow';
 import { PaginationNav } from '@/components/PaginationNav';
 
+interface RouteParams {
+  n: string;
+}
+
+export function generateStaticParams(): RouteParams[] {
+  const repo = loadRepo();
+  const releases = loadReleases();
+  const total = Math.max(
+    1,
+    Math.ceil(releases.length / releasesPerPage(repo)),
+  );
+  const params: RouteParams[] = [];
+  for (let n = 2; n <= total; n++) params.push({ n: String(n) });
+  return params;
+}
+
 export function generateMetadata(): Metadata {
   return buildReleasesListMetadata();
 }
 
-export default function ReleasesIndexPage() {
+export default async function ReleasesPageN({
+  params,
+}: {
+  params: Promise<RouteParams>;
+}) {
+  const { n } = await params;
+  const page = Number(n);
+  if (!Number.isInteger(page) || page < 2) notFound();
+
   const releases = loadReleases();
   const repo = loadRepo();
+  const slice = paginateReleases(releases, releasesPerPage(repo), page);
+  if (slice.page !== page) notFound();
 
-  if (releases.length === 0) {
-    return (
-      <main className="min-h-screen bg-background">
-        <div className="max-w-2xl mx-auto px-6 py-20 text-center">
-          <div className="font-feed-mono text-[0.6875rem] uppercase tracking-[0.2em] text-feed-gold mb-4">
-            Release Editions
-          </div>
-          <h1 className="font-feed-display text-3xl text-foreground mb-4">
-            No editions yet
-          </h1>
-          <p className="font-feed-body text-foreground-secondary">
-            Special editions appear here when you publish a release on GitHub.
-          </p>
-        </div>
-      </main>
-    );
-  }
-
-  const slice = paginateReleases(releases, releasesPerPage(repo), 1);
   const [hero, ...rest] = slice.releases;
   const standard = rest.slice(0, 3);
   const compact = rest.slice(3);
@@ -56,7 +60,10 @@ export default function ReleasesIndexPage() {
   });
 
   const prevHref =
-    slice.totalPages > 1 ? releasesPagePath(2) : undefined;
+    slice.page < slice.totalPages
+      ? releasesPagePath(slice.page + 1)
+      : undefined;
+  const nextHref = releasesPagePath(slice.page - 1);
 
   return (
     <main className="min-h-screen bg-background">
@@ -85,7 +92,7 @@ export default function ReleasesIndexPage() {
             </div>
           </>
         )}
-        <PaginationNav prevHref={prevHref} />
+        <PaginationNav prevHref={prevHref} nextHref={nextHref} />
       </div>
     </main>
   );

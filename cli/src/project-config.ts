@@ -2,6 +2,15 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+const ThemeSchema = z.strictObject({
+  accentColor: z
+    .string()
+    .regex(HEX_COLOR, 'must be a hex color like #b8860b or #abc')
+    .optional(),
+});
+
 const ProjectConfigSchema = z.strictObject({
   publicationTitle: z.string().trim().min(1).optional(),
   publicationSubtitle: z.string().trim().min(1).optional(),
@@ -9,6 +18,9 @@ const ProjectConfigSchema = z.strictObject({
   concurrency: z.number().int().min(1).optional(),
   releasesCap: z.number().int().min(0).optional(),
   includePrereleases: z.boolean().optional(),
+  daysPerPage: z.number().int().positive().optional(),
+  releasesPerPage: z.number().int().positive().optional(),
+  theme: ThemeSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;

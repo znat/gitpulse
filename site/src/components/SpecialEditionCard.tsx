@@ -74,7 +74,7 @@ function TopRow({ tag, isPrerelease }: { tag: string; isPrerelease: boolean }) {
 function Quip({ text }: { text: string }) {
   if (!text) return null;
   return (
-    <h2 className="font-feed-vollkorn text-[1.625rem] italic leading-[1.35] text-foreground mb-2 max-w-[540px]">
+    <h2 className="font-feed-display font-semibold text-3xl md:text-4xl leading-tight text-foreground mb-2 max-w-[540px]">
       &ldquo;{text}&rdquo;
     </h2>
   );

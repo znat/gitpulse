@@ -49,7 +49,7 @@ function VersionBadge({ tag }: { tag: string }) {
 function Quip({ text }: { text: string }) {
   if (!text) return null;
   return (
-    <h1 className="font-feed-vollkorn text-[clamp(2rem,5vw,3.5rem)] italic font-normal leading-[1.15] text-foreground max-w-[720px] mb-4">
+    <h1 className="headline text-foreground max-w-[720px] mb-4">
       &ldquo;{text}&rdquo;
     </h1>
   );
