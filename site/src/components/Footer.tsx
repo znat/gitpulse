@@ -3,9 +3,14 @@ import { getBaseUrl } from '@/lib/seo';
 export function Footer() {
   const year = new Date().getFullYear();
   const baseUrl = getBaseUrl();
-  const utmSource = baseUrl
-    ? new URL(baseUrl).hostname
-    : 'gitpulse-publication';
+  let utmSource = 'gitpulse-publication';
+  if (baseUrl) {
+    try {
+      utmSource = new URL(baseUrl).hostname;
+    } catch {
+      // baseUrl not a valid absolute URL — keep fallback
+    }
+  }
   const href = `https://github.com/znat/gitpulse?utm_source=${encodeURIComponent(utmSource)}&utm_medium=footer&utm_campaign=get-your-own`;
 
   return (
