@@ -1,0 +1,29 @@
+name: Storage Integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # Secrets aren't available on PRs from forks, so this workflow only runs
+    # on same-repo branches and pushes to main. The test itself requires the
+    # env vars to be set — no skipIf fallback.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.4.0
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn workspace @gitpulse/cli test:integration
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          # Store ID is public (appears in every blob URL) — not a secret.
+          GITPULSE_TEST_STORE_ID: store_ryXhp9N7MsNEbMh1

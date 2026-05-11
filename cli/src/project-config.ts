@@ -15,6 +15,37 @@ const ThemeSchema = z.strictObject({
     .optional(),
 });
 
+// Pluggable image-storage backends. Only 'vercel-blob' is wired up today
+// (PR 1); r2/s3/supabase shapes are reserved so .gitpulse.json schemas can
+// stage migrations without breaking parsers when those providers land.
+const StorageProviderSchema = z.discriminatedUnion('provider', [
+  z.strictObject({
+    provider: z.literal('vercel-blob'),
+    storeId: z.string().min(1),
+  }),
+  z.strictObject({
+    provider: z.literal('r2'),
+    accountId: z.string().min(1),
+    bucket: z.string().min(1),
+    publicBaseUrl: z.string().url(),
+  }),
+  z.strictObject({
+    provider: z.literal('s3'),
+    region: z.string().min(1),
+    bucket: z.string().min(1),
+    publicBaseUrl: z.string().url().optional(),
+  }),
+  z.strictObject({
+    provider: z.literal('supabase'),
+    projectUrl: z.string().url(),
+    bucket: z.string().min(1),
+  }),
+]);
+
+const ImagesSchema = z.strictObject({
+  storage: StorageProviderSchema.optional(),
+});
+
 const ProjectConfigSchema = z.strictObject({
   publicationTitle: z.string().trim().min(1).optional(),
   publicationSubtitle: z.string().trim().min(1).optional(),
@@ -25,6 +56,7 @@ const ProjectConfigSchema = z.strictObject({
   daysPerPage: z.number().int().positive().optional(),
   releasesPerPage: z.number().int().positive().optional(),
   theme: ThemeSchema.optional(),
+  images: ImagesSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;
