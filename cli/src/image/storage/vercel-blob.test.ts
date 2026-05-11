@@ -25,6 +25,21 @@ describe('storeIdToHost', () => {
   it('handles ids without store_ prefix (defensive)', () => {
     expect(storeIdToHost('XyZ')).toBe('xyz.public.blob.vercel-storage.com');
   });
+
+  it('trims whitespace', () => {
+    expect(storeIdToHost('  store_abc  ')).toBe(
+      'abc.public.blob.vercel-storage.com',
+    );
+  });
+
+  it('throws on empty or whitespace-only input', () => {
+    expect(() => storeIdToHost('')).toThrow(/storeId is required/);
+    expect(() => storeIdToHost('   ')).toThrow(/storeId is required/);
+  });
+
+  it('throws when the prefix is the entire value', () => {
+    expect(() => storeIdToHost('store_')).toThrow(/Invalid storeId/);
+  });
 });
 
 describe('VercelBlobStorage', () => {
@@ -63,6 +78,18 @@ describe('VercelBlobStorage', () => {
     );
     expect(storage.urlFor('foo/bar.webp')).toBe(
       'https://abcdef123.public.blob.vercel-storage.com/foo/bar.webp',
+    );
+  });
+
+  it('urlFor encodes special characters in path segments but preserves slashes', () => {
+    const storage = new VercelBlobStorage(
+      { storeId: STORE_ID },
+      { BLOB_READ_WRITE_TOKEN: TOKEN },
+    );
+    // Branch names in PR 2 keys can include spaces, ?, #, etc. Each segment
+    // gets percent-encoded; slashes stay as path separators.
+    expect(storage.urlFor('feature/foo bar/#hash?.webp')).toBe(
+      'https://abcdef123.public.blob.vercel-storage.com/feature/foo%20bar/%23hash%3F.webp',
     );
   });
 

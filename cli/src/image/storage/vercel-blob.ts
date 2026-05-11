@@ -6,7 +6,6 @@ export interface VercelBlobStorageOptions {
 }
 
 export class VercelBlobStorage implements ImageStorage {
-  private readonly storeId: string;
   private readonly token: string;
   private readonly host: string;
 
@@ -17,7 +16,6 @@ export class VercelBlobStorage implements ImageStorage {
         'BLOB_READ_WRITE_TOKEN env var is required for vercel-blob storage',
       );
     }
-    this.storeId = opts.storeId;
     this.token = token;
     this.host = storeIdToHost(opts.storeId);
   }
@@ -33,7 +31,7 @@ export class VercelBlobStorage implements ImageStorage {
   }
 
   urlFor(key: string): string {
-    return `https://${this.host}/${key}`;
+    return `https://${this.host}/${encodePath(key)}`;
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -58,6 +56,16 @@ export class VercelBlobStorage implements ImageStorage {
 // https://<lowercase-storeId-without-prefix>.public.blob.vercel-storage.com/<key>
 // confirmed by derisking against the real API.
 export function storeIdToHost(storeId: string): string {
-  const slug = storeId.replace(/^store_/, '').toLowerCase();
+  const trimmed = storeId.trim();
+  if (!trimmed) throw new Error('storeId is required');
+  const slug = trimmed.replace(/^store_/, '').toLowerCase();
+  if (!slug) throw new Error(`Invalid storeId: ${storeId}`);
   return `${slug}.public.blob.vercel-storage.com`;
+}
+
+// Encode a slash-delimited key as URL path segments, preserving the slashes
+// as path separators. Keys can include branch names or other arbitrary
+// strings in PR 2/3, so we must handle spaces, ?, #, and unicode safely.
+function encodePath(key: string): string {
+  return key.split('/').map(encodeURIComponent).join('/');
 }

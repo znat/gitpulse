@@ -38,7 +38,21 @@ describe.skipIf(!hasCreds)('VercelBlobStorage integration', () => {
     await storage.delete([key]);
     createdKeys.length = 0;
 
-    const afterDelete = await fetch(url, { cache: 'no-store' });
-    expect(afterDelete.status).toBe(404);
+    // Vercel Blob is eventually consistent at the CDN (up to ~60s propagation
+    // per docs). Retry briefly so CI doesn't flake on the post-delete check.
+    const status = await waitFor404(url, 10_000);
+    expect(status).toBe(404);
   });
 });
+
+async function waitFor404(url: string, timeoutMs: number): Promise<number> {
+  const deadline = Date.now() + timeoutMs;
+  let status = 0;
+  while (Date.now() < deadline) {
+    const res = await fetch(url, { cache: 'no-store' });
+    status = res.status;
+    if (status === 404) return status;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return status;
+}
