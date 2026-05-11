@@ -2,25 +2,24 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { VercelBlobStorage } from './vercel-blob.ts';
 
-const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
-const STORE_ID = process.env.GITPULSE_TEST_STORE_ID;
-
-const hasCreds = Boolean(TOKEN && STORE_ID);
-
 // Runs a real round-trip against the Vercel Blob store identified by
-// GITPULSE_TEST_STORE_ID. Skipped when env is missing (fork PRs, local dev
-// without secrets) so CI stays green without the secrets.
-describe.skipIf(!hasCreds)('VercelBlobStorage integration', () => {
+// GITPULSE_TEST_STORE_ID. Both env vars are required — the test fails loudly
+// rather than silently skipping if they're missing. Workflow gates ensure
+// this only runs in environments that have access to the secret.
+const STORE_ID = requireEnv('GITPULSE_TEST_STORE_ID');
+requireEnv('BLOB_READ_WRITE_TOKEN');
+
+describe('VercelBlobStorage integration', () => {
   const createdKeys: string[] = [];
 
   afterEach(async () => {
-    if (!hasCreds || createdKeys.length === 0) return;
-    const storage = new VercelBlobStorage({ storeId: STORE_ID! });
+    if (createdKeys.length === 0) return;
+    const storage = new VercelBlobStorage({ storeId: STORE_ID });
     await storage.delete(createdKeys.splice(0));
   });
 
   it('uploads, fetches, lists, and deletes a blob', async () => {
-    const storage = new VercelBlobStorage({ storeId: STORE_ID! });
+    const storage = new VercelBlobStorage({ storeId: STORE_ID });
     const key = `__integration-test__/${Date.now()}-${randomUUID()}.txt`;
     const bodyText = `hello from gitpulse integration test ${randomUUID()}\n`;
     createdKeys.push(key);
@@ -55,4 +54,14 @@ async function waitFor404(url: string, timeoutMs: number): Promise<number> {
     await new Promise((r) => setTimeout(r, 250));
   }
   return status;
+}
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `${name} is required to run the storage integration test`,
+    );
+  }
+  return value;
 }

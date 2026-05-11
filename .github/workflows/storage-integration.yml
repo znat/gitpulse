@@ -11,15 +11,17 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Secrets aren't available on PRs from forks, so this workflow only runs
+    # on same-repo branches and pushes to main. The test itself requires the
+    # env vars to be set — no skipIf fallback.
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v6.0.2
+      - uses: actions/setup-node@v6.4.0
         with:
           node-version: 22
           cache: yarn
       - run: yarn install --frozen-lockfile
-      # Fork PRs don't receive BLOB_READ_WRITE_TOKEN; the test's describe.skipIf
-      # guard turns that into a clean skip rather than a failure.
       - run: yarn workspace @gitpulse/cli test:integration
         env:
           BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
