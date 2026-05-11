@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.6](https://github.com/znat/gitpulse/compare/v0.1.5...v0.1.6) (2026-05-11)
+
+
+### Features
+
+* add theme.linkColor option to override link/accent CSS vars ([1f34b20](https://github.com/znat/gitpulse/commit/1f34b20e2b10bde5357f056d1c06f930a722b431))
+* **cli:** auto-load .env.local for integration tests ([#53](https://github.com/znat/gitpulse/issues/53)) ([c8e64f4](https://github.com/znat/gitpulse/commit/c8e64f49eddde9e179c530f5546140605ede340f))
+* **cli:** pluggable image storage with Vercel Blob impl (PR 1/3) ([#52](https://github.com/znat/gitpulse/issues/52)) ([e4b166a](https://github.com/znat/gitpulse/commit/e4b166aacb870b47d2fcb36243f25a58cb389098))
+* end-to-end password protection for published sites ([#44](https://github.com/znat/gitpulse/issues/44)) ([ff4788f](https://github.com/znat/gitpulse/commit/ff4788f5664267d40059bfcc1eb4cfbe4acc3fad))
+* paginated feed + releases tab + theme accent color ([#47](https://github.com/znat/gitpulse/issues/47)) ([aa63e21](https://github.com/znat/gitpulse/commit/aa63e21478f24db8a7aa1ca7072b1ab297a52342))
+
 ## [0.1.5](https://github.com/znat/gitpulse/compare/v0.1.4...v0.1.5) (2026-05-07)
 
 
