@@ -1,0 +1,27 @@
+name: Storage Integration
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      # Fork PRs don't receive BLOB_READ_WRITE_TOKEN; the test's describe.skipIf
+      # guard turns that into a clean skip rather than a failure.
+      - run: yarn workspace @gitpulse/cli test:integration
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+          # Store ID is public (appears in every blob URL) — not a secret.
+          GITPULSE_TEST_STORE_ID: store_ryXhp9N7MsNEbMh1
