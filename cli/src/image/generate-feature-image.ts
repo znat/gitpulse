@@ -5,8 +5,12 @@
 import type { ChangesNodeOutput } from '../schemas.ts';
 import { primaryCategoryKey } from '../category-helpers.ts';
 import type { ImageStorage } from './storage/types.ts';
-import { buildImagePrompt, hexToColorName, DEFAULT_THEME_COLOR } from './prompt.ts';
+import { buildImagePrompt } from './prompt.ts';
 import { generateImage, type ImageAIConfig } from './generator.ts';
+
+// Fallback accent color when .gitpulse.json doesn't declare theme.accentColor.
+// Matches the gold the default site theme uses.
+const DEFAULT_ACCENT_HEX = '#b8860b';
 
 export interface GenerateFeatureImageInput {
   storyId: string;
@@ -24,15 +28,11 @@ export async function generateFeatureImage(
 ): Promise<string | null> {
   if (primaryCategoryKey(input.ai.categories) !== 'feature') return null;
 
-  const themeColor = input.accentColorHex
-    ? hexToColorName(input.accentColorHex)
-    : DEFAULT_THEME_COLOR;
-
   const prompt = buildImagePrompt({
     story: input.ai.story,
     scopeSummary: input.ai.standfirst,
     technicalDescription: input.ai.technicalDescription,
-    themeColor,
+    themeColor: input.accentColorHex ?? DEFAULT_ACCENT_HEX,
   });
 
   const image = await generateImage(input.imageAi, prompt);

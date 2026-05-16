@@ -1,24 +1,10 @@
-// Editorial illustration prompt builder. Ported verbatim from
+// Editorial illustration prompt builder. Adapted from
 // gitsky/src/services/pr-analysis/image-prompt.ts (the generic template used
 // for Gemini/OpenAI). The Flux variant is intentionally not ported — gitpulse
-// only wires up Gemini in this PR.
-
-export const DEFAULT_THEME_COLOR = 'orange/gold';
-
-const HEX_TO_NAME: Record<string, string> = {
-  '#b8860b': 'orange/gold',
-  '#326891': 'blue',
-  '#0d9488': 'teal',
-  '#b91c1c': 'red',
-  '#7c3aed': 'purple',
-  '#15803d': 'green',
-  '#e8b84a': 'warm gold',
-  '#d4a574': 'amber',
-};
-
-export function hexToColorName(hex: string): string {
-  return HEX_TO_NAME[hex.toLowerCase()] || `hex ${hex}`;
-}
+// only wires up Gemini in this PR. The accent color is passed in by the
+// caller (`cli/src/image/generate-feature-image.ts`) — typically the hex
+// from `.gitpulse.json` → `theme.accentColor`. Gemini interprets hex strings
+// directly, so no name translation is needed here.
 
 const STYLE_TEMPLATE = `Editorial illustration for a tech publication.
 
@@ -50,13 +36,12 @@ export interface ImagePromptInput {
   story: string;
   scopeSummary: string;
   technicalDescription?: string;
-  themeColor?: string;
+  themeColor: string;
 }
 
 export function buildImagePrompt(input: ImagePromptInput): string {
-  const themeColor = input.themeColor || DEFAULT_THEME_COLOR;
   return STYLE_TEMPLATE
-    .replace('{themeColor}', themeColor)
+    .replace('{themeColor}', input.themeColor)
     .replace('{story}', input.story)
     .replace('{scopeSummary}', input.scopeSummary)
     .replace('{technicalDescription}', input.technicalDescription || '(not available)');
