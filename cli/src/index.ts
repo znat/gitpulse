@@ -39,6 +39,10 @@ import {
 } from './release-builder.ts';
 import { encodeFilename, writeRelease } from './release-render.ts';
 import { createReleaseEditor, getFallbackEdition } from './release-llm.ts';
+import { createStorage } from './image/storage/index.ts';
+import type { ImageStorage } from './image/storage/types.ts';
+import { generateFeatureImage } from './image/generate-feature-image.ts';
+import type { ImageAIConfig } from './image/generator.ts';
 import type { CommitRecord, Release, Story } from './types.ts';
 
 export interface AnalyzerResult {
@@ -62,6 +66,8 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
   );
   console.log(`[gitpulse] site.url=${cfg.siteUrl}`);
   console.log(`[gitpulse] concurrency=${cfg.concurrency}`);
+  const imageGen = resolveImageGeneration(cfg);
+  console.log(`[gitpulse] images: ${imageGen.reason}`);
 
   // Restore prior content from the deployed site. When the site is password-
   // protected, the fetcher uses GITPULSE_PASSWORD to decrypt envelopes
@@ -149,6 +155,7 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
         gh,
         owner,
         repo,
+        imageGen: imageGen.enabled ? imageGen : undefined,
       });
       if (result.ok) {
         newStoriesCount++;
@@ -431,8 +438,9 @@ async function processCommit(opts: {
   gh: GitHubClient | null;
   owner: string;
   repo: string;
+  imageGen?: EnabledImageGen;
 }): Promise<ProcessResult> {
-  const { baseCommit, cfg, summarize, gh, owner, repo } = opts;
+  const { baseCommit, cfg, summarize, gh, owner, repo, imageGen } = opts;
   try {
     const files = fetchFileChanges(cfg.repoDir, baseCommit.sha);
     const stat = computeStatTotals(files);
@@ -452,18 +460,40 @@ async function processCommit(opts: {
       filesChanged: ctx.pr?.changedFiles ?? commit.filesChanged,
     });
 
+    const storyId = ctx.pr ? `pr-${ctx.pr.number}` : `commit-${commit.shortSha}`;
+    let imageUrl: string | undefined;
+    let imageTag = '';
+    if (imageGen) {
+      try {
+        const url = await generateFeatureImage({
+          storyId,
+          ai,
+          imageAi: imageGen.imageAi,
+          storage: imageGen.storage,
+          accentColorHex: cfg.theme?.accentColor,
+        });
+        if (url) {
+          imageUrl = url;
+          imageTag = ' | image:stored';
+        }
+      } catch (err) {
+        imageTag = ` | image:failed(${err instanceof Error ? err.message : String(err)})`;
+      }
+    }
+
     const story = buildStoryFromCommit({
       repoFullName: cfg.repoFullName,
       commit,
       ai,
       size,
       context: ctx,
+      imageUrl,
     });
     writeStory(cfg.storiesDir, story);
 
     const tag = ctx.pr ? `pr#${ctx.pr.number}` : 'commit';
     const cat = ai.categories[0]?.key ?? '?';
-    return { ok: true, tag: `[${tag} | ${cat} | ${size.assessment}]` };
+    return { ok: true, tag: `[${tag} | ${cat} | ${size.assessment}${imageTag}]` };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
@@ -488,6 +518,41 @@ function writeJson(path: string, obj: unknown): void {
 
 function isoDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86400_000).toISOString();
+}
+
+interface EnabledImageGen {
+  enabled: true;
+  reason: string;
+  imageAi: ImageAIConfig;
+  storage: ImageStorage;
+}
+interface DisabledImageGen {
+  enabled: false;
+  reason: string;
+}
+type ImageGenState = EnabledImageGen | DisabledImageGen;
+
+// Resolve whether feature-image generation is wired up. Both an image AI
+// config (provider + model + API key) and a storage backend are required;
+// either missing piece disables generation with a one-line reason that
+// the analyzer logs at start.
+function resolveImageGeneration(cfg: RuntimeConfig): ImageGenState {
+  if (!cfg.imageAi) {
+    if (cfg.images?.ai) {
+      return { enabled: false, reason: 'skipped (GEMINI_API_KEY missing)' };
+    }
+    return { enabled: false, reason: 'skipped (no images.ai in .gitpulse.json)' };
+  }
+  if (!cfg.images?.storage) {
+    return { enabled: false, reason: 'skipped (no images.storage in .gitpulse.json)' };
+  }
+  const storage = createStorage(cfg.images.storage);
+  return {
+    enabled: true,
+    reason: `enabled (${cfg.imageAi.provider} ${cfg.imageAi.model})`,
+    imageAi: cfg.imageAi,
+    storage,
+  };
 }
 
 function truncate(s: string, n: number): string {
