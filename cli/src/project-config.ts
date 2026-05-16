@@ -42,8 +42,19 @@ const StorageProviderSchema = z.discriminatedUnion('provider', [
   }),
 ]);
 
+// Pluggable image AI providers. Only 'gemini' is wired up in PR 2/3;
+// other providers can land later as additional discriminator branches
+// without breaking existing .gitpulse.json files.
+const ImageAISchema = z.discriminatedUnion('provider', [
+  z.strictObject({
+    provider: z.literal('gemini'),
+    model: z.string().min(1),
+  }),
+]);
+
 const ImagesSchema = z.strictObject({
   storage: StorageProviderSchema.optional(),
+  ai: ImageAISchema.optional(),
 });
 
 const ProjectConfigSchema = z.strictObject({

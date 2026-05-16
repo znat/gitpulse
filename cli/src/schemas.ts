@@ -70,6 +70,7 @@ const StoryBaseSchema = z.object({
   digestSentence: z.string(),
   technicalDescription: z.string(),
   imageDirection: z.string().nullable(),
+  imageUrl: z.string().url().optional(),
   hasFactCheckIssues: z.boolean(),
   factCheckIssues: z.string().nullable(),
   sizeAssessment: SizeAssessmentSchema,

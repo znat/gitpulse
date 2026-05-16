@@ -1,9 +1,13 @@
 /**
  * Editorial-style PR/commit card. Hero, standard, and compact variants.
- * v1 is text-only — no image variant.
+ * Feature stories with an imageUrl get an illustration:
+ *   - hero    → image above the headline, full width
+ *   - standard → split image/text (image side controlled by `imagePosition`)
+ *   - compact → text-only
  */
 
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   type Story,
   type SizeAssessment,
@@ -21,6 +25,8 @@ interface PRFeedItemProps {
   variant?: PRFeedItemVariant;
   meta?: React.ReactNode;
   unwrapped?: boolean;
+  /** When set with an image, standard variant renders a side-by-side layout. */
+  imagePosition?: 'left' | 'right';
 }
 
 const HEADLINE_CLASSES: Record<PRFeedItemVariant, string> = {
@@ -45,7 +51,13 @@ function formatDate(iso: string): string {
   });
 }
 
-export function PRFeedItem({ story, variant = 'standard', meta, unwrapped }: PRFeedItemProps) {
+export function PRFeedItem({
+  story,
+  variant = 'standard',
+  meta,
+  unwrapped,
+  imagePosition,
+}: PRFeedItemProps) {
   const detailUrl = storyPath(story);
   const cat = primaryCategory(story);
   const dateLabel =
@@ -53,6 +65,9 @@ export function PRFeedItem({ story, variant = 'standard', meta, unwrapped }: PRF
       ? `Merged ${formatDate(story.mergedAt)}`
       : `Pushed ${formatDate(story.committedAt)}`;
   const ref = story.kind === 'pr' ? `#${story.prNumber}` : story.sha.slice(0, 7);
+
+  const hasImage = !!story.imageUrl && variant !== 'compact';
+  const useSplitLayout = hasImage && variant === 'standard' && !!imagePosition;
 
   const categoryBlock = !meta && cat && (
     <div className="mb-2 flex items-center gap-2 font-feed-mono text-[0.6875rem] tracking-wide">
@@ -86,9 +101,61 @@ export function PRFeedItem({ story, variant = 'standard', meta, unwrapped }: PRF
     <p className={STANDFIRST_CLASSES[variant]}>{story.standfirst}</p>
   );
 
+  const imageBlock = hasImage && (
+    <Link href={detailUrl} className="block">
+      <div
+        className="relative w-full overflow-hidden rounded-md"
+        style={{ aspectRatio: '3/2' }}
+      >
+        <Image
+          src={story.imageUrl!}
+          alt={story.headline}
+          fill
+          className="object-cover"
+          sizes={
+            useSplitLayout
+              ? '(max-width: 768px) 100vw, 50vw'
+              : '(max-width: 768px) 100vw, 720px'
+          }
+          unoptimized
+        />
+      </div>
+    </Link>
+  );
+
+  // Split layout: standard variant with imagePosition + image.
+  if (useSplitLayout) {
+    const textCol = (
+      <div className="flex flex-col justify-start">
+        {meta ?? categoryBlock}
+        {headlineBlock}
+        {!meta && <div className="mb-4">{defaultMetaBlock}</div>}
+        {standfirstBlock}
+      </div>
+    );
+    return (
+      <article className="py-8 border-b border-border-light last:border-b-0">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+          {imagePosition === 'right' ? (
+            <>
+              <div className="order-last md:order-first md:col-span-6">{textCol}</div>
+              <div className="order-first md:order-last md:col-span-6">{imageBlock}</div>
+            </>
+          ) : (
+            <>
+              <div className="md:col-span-6">{imageBlock}</div>
+              <div className="md:col-span-6">{textCol}</div>
+            </>
+          )}
+        </div>
+      </article>
+    );
+  }
+
   const content = (
     <>
       {meta ?? categoryBlock}
+      {imageBlock && <div className="mb-4">{imageBlock}</div>}
       {headlineBlock}
       {!meta && <div className="mb-4">{defaultMetaBlock}</div>}
       {standfirstBlock}
