@@ -1,8 +1,9 @@
 // Editorial "Special Edition" card for releases. Renders inline at the top
 // of its publication day in the homepage feed. Adapted from gitsky's
-// SpecialEditionCard — drops imageUrl, highlightCount, slug/owner-context
+// SpecialEditionCard — drops highlightCount and the slug/owner-context
 // (gitpulse is single-repo), reduces the stats strip from 4 → 3 cells.
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { formatLines, type Release, type ReleaseTopStory } from '@/lib/releases';
 import { releasePath } from '@/lib/urls';
@@ -21,10 +22,35 @@ export function SpecialEditionCard({ release }: { release: Release }) {
             <Quip text={release.quip} />
             <ReleaseName name={release.name} />
           </Link>
+          {release.imageUrl && (
+            <EditionIllustration url={release.imageUrl} tag={release.tag} />
+          )}
           <StatsStrip release={release} />
           {topStories.length > 0 && <TopStoriesList stories={topStories} />}
           <CtaRow url={url} prCount={release.prCount} />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function EditionIllustration({ url, tag }: { url: string; tag: string }) {
+  return (
+    <div className="mb-6 -mx-2">
+      <div className="relative overflow-hidden rounded-sm border border-border-light/50">
+        <Image
+          src={url}
+          alt={`Editorial illustration for release ${tag}`}
+          width={960}
+          height={640}
+          className="w-full h-auto object-cover"
+          sizes="(max-width: 768px) 100vw, 640px"
+          unoptimized
+        />
+        {/* Vignette overlay for blending into the dark card */}
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_40px_rgba(0,0,0,0.3)]" />
+        {/* Bottom gold accent line */}
+        <div className="absolute bottom-0 left-[15%] right-[15%] h-px bg-gradient-to-r from-transparent via-feed-gold/30 to-transparent" />
       </div>
     </div>
   );

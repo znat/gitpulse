@@ -127,6 +127,7 @@ export const ReleaseSchema = z.object({
   topStories: z.array(ReleaseTopStorySchema),
   changelogStoryIds: z.array(z.string().min(1)),
   inputsHash: z.string().min(1),
+  imageUrl: z.string().url().optional(),
 });
 
 export const ReleaseManifestEntrySchema = z.object({

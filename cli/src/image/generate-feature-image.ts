@@ -7,6 +7,7 @@ import { primaryCategoryKey } from '../category-helpers.ts';
 import type { ImageStorage } from './storage/types.ts';
 import { buildImagePrompt } from './prompt.ts';
 import { generateImage, type ImageAIConfig } from './generator.ts';
+import { extensionFromMimeType } from './mime.ts';
 
 // Fallback accent color when .gitpulse.json doesn't declare theme.accentColor.
 // Matches the gold the default site theme uses.
@@ -42,20 +43,3 @@ export async function generateFeatureImage(
   return input.storage.urlFor(key);
 }
 
-function extensionFromMimeType(mimeType: string): string {
-  // Normalize: providers occasionally return `image/JPEG`, `image/jpeg;
-  // charset=binary`, or even `image/jpg`. Strip parameters, lowercase, and
-  // collapse the jpg/jpeg variant before matching.
-  const normalized = mimeType.toLowerCase().split(';', 1)[0]!.trim();
-  switch (normalized) {
-    case 'image/png':
-      return 'png';
-    case 'image/jpeg':
-    case 'image/jpg':
-      return 'jpg';
-    case 'image/webp':
-      return 'webp';
-    default:
-      return 'png';
-  }
-}

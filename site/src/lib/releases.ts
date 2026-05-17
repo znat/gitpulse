@@ -31,6 +31,7 @@ export interface Release {
   topStories: ReleaseTopStory[];
   changelogStoryIds: string[];
   inputsHash: string;
+  imageUrl?: string;
 }
 
 export interface ReleaseManifestEntry {

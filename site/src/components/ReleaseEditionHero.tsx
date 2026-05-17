@@ -1,7 +1,8 @@
 // Lifted from gitsky's apps/web/app/[owner]/[repo]/releases/[tag]/components/
-// ReleaseEditionHero.tsx. Drops imageUrl block (deferred for v1) and the
-// owner/repo context for the "All Releases" link.
+// ReleaseEditionHero.tsx. Drops the owner/repo context for the "All Releases"
+// link (gitpulse is single-repo).
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { formatReleaseDate, type Release } from '@/lib/releases';
 import { releasesIndexPath } from '@/lib/urls';
@@ -16,6 +17,9 @@ export function ReleaseEditionHero({ release }: { release: Release }) {
       <VersionBadge tag={release.tag} />
       <Quip text={release.quip} />
       <ReleaseName name={release.name} date={dateStr} />
+      {release.imageUrl && (
+        <HeroIllustration url={release.imageUrl} tag={release.tag} />
+      )}
       {release.releaseStory && <ReleaseStory text={release.releaseStory} />}
       <Link
         href={releasesIndexPath()}
@@ -25,6 +29,29 @@ export function ReleaseEditionHero({ release }: { release: Release }) {
       </Link>
       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-feed-gold/50 to-transparent" />
     </section>
+  );
+}
+
+function HeroIllustration({ url, tag }: { url: string; tag: string }) {
+  return (
+    <div className="w-full max-w-[680px] mb-2 mt-8 relative">
+      <div className="relative overflow-hidden rounded border border-border-light/40">
+        <Image
+          src={url}
+          alt={`Editorial illustration for release ${tag}`}
+          width={1536}
+          height={1024}
+          className="w-full h-auto object-cover"
+          sizes="(max-width: 768px) 100vw, 680px"
+          priority
+          unoptimized
+        />
+        {/* Soft vignette */}
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_60px_rgba(0,0,0,0.25)]" />
+      </div>
+      {/* Gold accent line flanking the image */}
+      <div className="absolute -bottom-px left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-feed-gold/40 to-transparent" />
+    </div>
   );
 }
 

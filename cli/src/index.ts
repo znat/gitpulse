@@ -42,6 +42,7 @@ import { createReleaseEditor, getFallbackEdition } from './release-llm.ts';
 import { createStorage } from './image/storage/index.ts';
 import type { ImageStorage } from './image/storage/types.ts';
 import { generateFeatureImage } from './image/generate-feature-image.ts';
+import { generateReleaseImage } from './image/generate-release-image.ts';
 import type { ImageAIConfig } from './image/generator.ts';
 import type { CommitRecord, Release, Story } from './types.ts';
 
@@ -178,7 +179,15 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
 
   // Releases pass.
   if (gh && cfg.releasesCap > 0) {
-    await processReleases({ cfg, gh, fetcher, owner, repo, allStories });
+    await processReleases({
+      cfg,
+      gh,
+      fetcher,
+      owner,
+      repo,
+      allStories,
+      imageGen: imageGen.enabled ? imageGen : undefined,
+    });
   } else if (cfg.releasesCap === 0) {
     console.log('[gitpulse] releases: skipped (releasesCap=0)');
   } else {
@@ -201,8 +210,9 @@ async function processReleases(opts: {
   owner: string;
   repo: string;
   allStories: Story[];
+  imageGen?: EnabledImageGen;
 }): Promise<void> {
-  const { cfg, gh, fetcher, owner, repo, allStories } = opts;
+  const { cfg, gh, fetcher, owner, repo, allStories, imageGen } = opts;
 
   // Restore prior releases from the deployed site so we can compare hashes.
   const priorReleaseManifest = await fetcher.fetchReleaseManifest();
@@ -288,6 +298,7 @@ async function processReleases(opts: {
         previous,
         allStories,
         editor,
+        imageGen,
       });
       if (result === 'skipped') {
         skipped++;
@@ -323,8 +334,9 @@ async function processOneRelease(opts: {
   previous: GitHubRelease | null;
   allStories: Story[];
   editor: ReturnType<typeof createReleaseEditor>;
+  imageGen?: EnabledImageGen;
 }): Promise<'written' | 'skipped'> {
-  const { cfg, gh, owner, repo, release, previous, allStories, editor } = opts;
+  const { cfg, gh, owner, repo, release, previous, allStories, editor, imageGen } = opts;
 
   // Match PRs in this release window. With a predecessor we use the
   // GitHub compare endpoint; for the first release we walk every commit
@@ -350,6 +362,7 @@ async function processOneRelease(opts: {
   const existingPath = `${cfg.releasesDir}/${encodeFilename(release.tagName)}.json`;
   let skipLLM = false;
   let edition: { quip: string; releaseStory: string } | undefined;
+  let existingImageUrl: string | undefined;
 
   if (existsSync(existingPath)) {
     try {
@@ -363,6 +376,9 @@ async function processOneRelease(opts: {
           releaseStory: existing.releaseStory,
         };
         skipLLM = true;
+        // Preserve the image too — content unchanged, no need to spend
+        // another generation. We'll still backfill below if it's missing.
+        existingImageUrl = existing.imageUrl;
       }
     } catch {
       // fall through and regenerate
@@ -409,14 +425,42 @@ async function processOneRelease(opts: {
   }
 
   const finalRelease = assembleRelease(draft, edition);
-  writeRelease(cfg.releasesDir, finalRelease);
 
-  if (skipLLM) {
+  // Image generation. Run when image gen is enabled AND either (a) we
+  // regenerated the edition (content changed), or (b) the existing release
+  // had no image (backfill). Preserve the existing image otherwise.
+  let imageUrl = existingImageUrl;
+  let imageTag = '';
+  const shouldGenerateImage = !!imageGen && (!skipLLM || !existingImageUrl);
+  if (shouldGenerateImage && imageGen) {
+    try {
+      imageUrl = await generateReleaseImage({
+        tag: release.tagName,
+        quip: edition.quip,
+        releaseStory: edition.releaseStory,
+        topStoryDetails: draft.topPRStories,
+        releaseNotes: release.body || null,
+        imageAi: imageGen.imageAi,
+        storage: imageGen.storage,
+        accentColorHex: cfg.theme?.accentColor,
+      });
+      imageTag = ' | image:stored';
+    } catch (err) {
+      imageTag = ` | image:failed(${err instanceof Error ? err.message : String(err)})`;
+    }
+  }
+
+  const releaseWithImage: Release = imageUrl
+    ? { ...finalRelease, imageUrl }
+    : finalRelease;
+  writeRelease(cfg.releasesDir, releaseWithImage);
+
+  if (skipLLM && !imageTag) {
     return 'skipped';
   }
 
   console.log(
-    `  ${release.tagName} … ✓ [${matched.length} prs, ${draft.meta.contributorCount} contributors]`,
+    `  ${release.tagName} … ✓ [${matched.length} prs, ${draft.meta.contributorCount} contributors${imageTag}]`,
   );
   return 'written';
 }
