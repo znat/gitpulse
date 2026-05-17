@@ -26,8 +26,9 @@ export function buildStoryFromCommit(opts: {
   ai: ChangesNodeOutput;
   size: SizeAssessmentOutput;
   context: CommitContext;
+  imageUrl?: string;
 }): Story {
-  const { repoFullName, commit, ai, size, context } = opts;
+  const { repoFullName, commit, ai, size, context, imageUrl } = opts;
   const { pr, commitAuthor } = context;
   const isMerge = pr !== null;
 
@@ -55,6 +56,7 @@ export function buildStoryFromCommit(opts: {
     digestSentence: ai.digestSentence,
     technicalDescription: ai.technicalDescription,
     imageDirection: ai.imageDirection,
+    ...(imageUrl ? { imageUrl } : {}),
     hasFactCheckIssues: ai.hasFactCheckIssues,
     factCheckIssues: ai.factCheckIssues,
     sizeAssessment: size.assessment,

@@ -1,4 +1,7 @@
-import { loadProjectConfig } from './project-config.ts';
+import { dirname } from 'node:path';
+import { loadProjectConfig, type ProjectConfig } from './project-config.ts';
+import { findUp } from './find-up.ts';
+import type { ImageAIConfig } from './image/generator.ts';
 
 export interface RuntimeConfig {
   repoDir: string;
@@ -29,6 +32,11 @@ export interface RuntimeConfig {
     baseURL?: string;
     temperature: number;
   };
+  // Set only when .gitpulse.json declares images.ai AND the matching
+  // provider API key env var is present. The analyzer treats absence as
+  // "image generation disabled" and logs why.
+  imageAi?: ImageAIConfig;
+  images?: ProjectConfig['images'];
 }
 
 export function loadConfig(env = process.env): RuntimeConfig {
@@ -53,7 +61,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
     );
   }
   const apiKey = required(env, 'OPENAI_API_KEY');
-  const repoDir = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE ?? process.cwd();
+  const repoDir = resolveRepoDir(env);
   // Match build.ts default so the zero-config consumer flow
   // (analyze → build) wires together without GITPULSE_DATA_DIR.
   // self-deploy.yml overrides this explicitly to site/public/data.
@@ -86,7 +94,37 @@ export function loadConfig(env = process.env): RuntimeConfig {
       baseURL: env.AI_BASE_URL || undefined,
       temperature: Number(env.AI_TEMPERATURE ?? 0),
     },
+    imageAi: resolveImageAi(projectConfig, env),
+    images: projectConfig.images,
   };
+}
+
+// Determine which directory to treat as the repo root. Explicit env vars
+// win unchanged. When neither is set, walk up from cwd to find
+// `.gitpulse.json` so the CLI does the right thing when invoked from
+// `cli/` or any other subdirectory of the project.
+function resolveRepoDir(env: NodeJS.ProcessEnv): string {
+  const explicit = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE;
+  if (explicit) return explicit;
+  const configPath = findUp('.gitpulse.json', process.cwd());
+  return configPath ? dirname(configPath) : process.cwd();
+}
+
+function resolveImageAi(
+  projectConfig: ProjectConfig,
+  env: NodeJS.ProcessEnv,
+): ImageAIConfig | undefined {
+  const ai = projectConfig.images?.ai;
+  if (!ai) return undefined;
+  if (ai.provider === 'gemini') {
+    // Accept either name. GEMINI_API_KEY wins when both are set (more
+    // specific intent); GOOGLE_API_KEY is the canonical name the official
+    // @google/genai SDK and many existing setups already use.
+    const apiKey = env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
+    if (!apiKey) return undefined;
+    return { provider: 'gemini', model: ai.model, apiKey };
+  }
+  return undefined;
 }
 
 // Resolve the site URL with priority:

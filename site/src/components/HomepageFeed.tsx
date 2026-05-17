@@ -86,8 +86,13 @@ function FeaturesSection({ items }: { items: StoryDay['features'] }) {
   return (
     <>
       <PRFeedItem story={hero} variant="hero" />
-      {rest.map((story) => (
-        <PRFeedItem key={story.id} story={story} variant="standard" />
+      {rest.map((story, i) => (
+        <PRFeedItem
+          key={story.id}
+          story={story}
+          variant="standard"
+          imagePosition={i % 2 === 0 ? 'left' : 'right'}
+        />
       ))}
     </>
   );

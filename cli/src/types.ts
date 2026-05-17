@@ -39,6 +39,7 @@ export interface Story {
   digestSentence: string;
   technicalDescription: string;
   imageDirection: string | null;
+  imageUrl?: string;
   hasFactCheckIssues: boolean;
   factCheckIssues: string | null;
   // Size assessment (rule-based)

@@ -48,3 +48,5 @@ cli/LICENSE
 
 # Vercel CLI workspace (orgId/projectId belong in repo secrets, not in repo)
 .vercel/
+.vercel
+.env*.local

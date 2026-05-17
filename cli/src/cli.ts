@@ -2,8 +2,14 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadEnvLocal } from './dotenv-local.ts';
 import { runAnalyzer } from './index.ts';
 import { runBuild } from './build.ts';
+import { runImageCommand } from './image-cmd.ts';
+
+// Pull in .env.local before any module reads process.env. No-op in CI and
+// when the file is missing — see dotenv-local.ts.
+loadEnvLocal();
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8')) as {
@@ -18,10 +24,18 @@ function printUsage(): void {
 Usage: gitpulse <command>
 
 Commands:
-  analyze   Generate stories from git history and write them to GITPULSE_DATA_DIR.
-  build     Fetch the matching gitpulse site, inject data, build static output.
-  --version Print the CLI version.
-  --help    Show this help.
+  analyze                     Generate stories from git history and write them to GITPULSE_DATA_DIR.
+  build                       Fetch the matching gitpulse site, inject data, build static output.
+  image <path|PR-URL|site-URL>
+                              (Re)generate the illustration for a single feature story. Accepts a
+                              story JSON path (e.g. .gitpulse/data/stories/pr-52.json), a GitHub PR
+                              URL (e.g. https://github.com/znat/gitpulse/pull/52), or a deployed-
+                              site URL with ?story=<id> (e.g. https://<site>/?story=pr-52). When
+                              the story file isn't present locally, fetches it from the site URL
+                              (or cfg.siteUrl) and writes it under GITPULSE_DATA_DIR. Writes the
+                              uploaded image URL back into the story JSON.
+  --version                   Print the CLI version.
+  --help                      Show this help.
 
 Configuration is via environment variables (no flags). Required:
   OPENAI_API_KEY            API key for the AI provider configured below.
@@ -62,6 +76,9 @@ try {
       break;
     case 'build':
       await runBuild();
+      break;
+    case 'image':
+      await runImageCommand(process.argv[3]);
       break;
     case '--version':
     case '-v':
