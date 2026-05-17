@@ -5,6 +5,13 @@ import type { CommitRecord, Story } from './types.ts';
 import type { CommitContext } from './github.ts';
 import type { SizeAssessmentOutput } from './schemas.ts';
 
+// Canonical story-id format. Single source of truth for `pr-<n>` vs
+// `commit-<shortSha>` so processCommit (cli/src/index.ts) and the on-disk
+// `Story.id` written by buildStoryFromCommit never drift.
+export function deriveStoryId(ctx: CommitContext, commit: CommitRecord): string {
+  return ctx.pr ? `pr-${ctx.pr.number}` : `commit-${commit.shortSha}`;
+}
+
 export function writeStory(outDir: string, story: Story): string {
   const validation = StorySchema.safeParse(story);
   if (!validation.success) {
@@ -44,7 +51,7 @@ export function buildStoryFromCommit(opts: {
   const filesChanged = pr?.changedFiles ?? commit.filesChanged;
 
   const base = {
-    id: isMerge ? `pr-${pr.number}` : `commit-${commit.shortSha}`,
+    id: deriveStoryId(context, commit),
     sha: commit.sha,
     author,
     authorUrl,

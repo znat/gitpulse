@@ -5,7 +5,7 @@
 // imageUrl back into the file.
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, isAbsolute, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, resolve } from 'node:path';
 import { loadConfig } from './config.ts';
 import { createStorage } from './image/storage/index.ts';
 import { generateFeatureImage } from './image/generate-feature-image.ts';
@@ -163,7 +163,11 @@ function resolveStoryRef(arg: string, storiesDir: string): StoryRef {
   }
 
   const localPath = isAbsolute(arg) ? arg : resolve(process.cwd(), arg);
-  const idFromPath = localPath.match(/\/([^/]+)\.json$/)?.[1] ?? null;
+  // Use path.basename so both POSIX (/) and Windows (\) separators work.
+  const file = basename(localPath);
+  const idFromPath = file.endsWith('.json')
+    ? file.slice(0, -'.json'.length)
+    : null;
   return { storyId: idFromPath, localPath };
 }
 

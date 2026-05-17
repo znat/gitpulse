@@ -8,7 +8,7 @@ import {
   formatPRContext,
 } from './commit-context.ts';
 import { createSummarizer, postProcessOutput } from './llm.ts';
-import { buildStoryFromCommit, writeStory } from './render.ts';
+import { buildStoryFromCommit, deriveStoryId, writeStory } from './render.ts';
 import {
   GitHubClient,
   parseRepoFullName,
@@ -460,7 +460,7 @@ async function processCommit(opts: {
       filesChanged: ctx.pr?.changedFiles ?? commit.filesChanged,
     });
 
-    const storyId = ctx.pr ? `pr-${ctx.pr.number}` : `commit-${commit.shortSha}`;
+    const storyId = deriveStoryId(ctx, commit);
     let imageUrl: string | undefined;
     let imageTag = '';
     if (imageGen) {
