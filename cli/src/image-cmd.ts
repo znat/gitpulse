@@ -98,8 +98,16 @@ export async function runImageCommand(arg: string | undefined): Promise<void> {
     throw new Error('Image generator returned null unexpectedly.');
   }
 
-  const updated: Story = { ...story, imageUrl: url };
-  writeFileSync(ref.localPath, JSON.stringify(updated, null, 2) + '\n');
+  // Validate the updated story before persisting — keeps a corrupt imageUrl
+  // (e.g. an empty string from a broken storage backend) from making it onto
+  // disk where downstream consumers would choke.
+  const validation = StorySchema.safeParse({ ...story, imageUrl: url });
+  if (!validation.success) {
+    throw new Error(
+      `Updated story failed schema validation:\n${JSON.stringify(validation.error.issues, null, 2)}`,
+    );
+  }
+  writeFileSync(ref.localPath, JSON.stringify(validation.data, null, 2) + '\n');
 
   console.log(`[gitpulse] image: stored ${url}`);
   console.log(`[gitpulse] image: updated ${ref.localPath}`);
@@ -141,6 +149,12 @@ function resolveStoryRef(arg: string, storiesDir: string): StoryRef {
         `Site URL is missing the ?story=<id> query param: ${arg}`,
       );
     }
+    if (!isSafeStoryId(storyId)) {
+      throw new Error(
+        `Invalid story id from ?story= query param: ${JSON.stringify(storyId)}. ` +
+          'Expected pr-<n> or commit-<hex>.',
+      );
+    }
     return {
       storyId,
       localPath: `${storiesDir}/${storyId}.json`,
@@ -151,6 +165,13 @@ function resolveStoryRef(arg: string, storiesDir: string): StoryRef {
   const localPath = isAbsolute(arg) ? arg : resolve(process.cwd(), arg);
   const idFromPath = localPath.match(/\/([^/]+)\.json$/)?.[1] ?? null;
   return { storyId: idFromPath, localPath };
+}
+
+// Story IDs gitpulse writes match `pr-<digits>` or `commit-<shortSha>` (see
+// processCommit in cli/src/index.ts). Reject anything else so a hand-crafted
+// `?story=../../etc/passwd` can't escape `storiesDir`.
+function isSafeStoryId(id: string): boolean {
+  return /^(pr-\d+|commit-[A-Za-z0-9]+)$/.test(id);
 }
 
 function readStory(path: string): Story {

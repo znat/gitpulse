@@ -43,10 +43,15 @@ export async function generateFeatureImage(
 }
 
 function extensionFromMimeType(mimeType: string): string {
-  switch (mimeType) {
+  // Normalize: providers occasionally return `image/JPEG`, `image/jpeg;
+  // charset=binary`, or even `image/jpg`. Strip parameters, lowercase, and
+  // collapse the jpg/jpeg variant before matching.
+  const normalized = mimeType.toLowerCase().split(';', 1)[0]!.trim();
+  switch (normalized) {
     case 'image/png':
       return 'png';
     case 'image/jpeg':
+    case 'image/jpg':
       return 'jpg';
     case 'image/webp':
       return 'webp';

@@ -26,9 +26,13 @@ Usage: gitpulse <command>
 Commands:
   analyze                     Generate stories from git history and write them to GITPULSE_DATA_DIR.
   build                       Fetch the matching gitpulse site, inject data, build static output.
-  image <path|PR-URL>         (Re)generate the illustration for a single feature story. Accepts a
-                              story JSON path (e.g. .gitpulse/data/stories/pr-52.json) or a GitHub
-                              PR URL (e.g. https://github.com/znat/gitpulse/pull/52). Writes the
+  image <path|PR-URL|site-URL>
+                              (Re)generate the illustration for a single feature story. Accepts a
+                              story JSON path (e.g. .gitpulse/data/stories/pr-52.json), a GitHub PR
+                              URL (e.g. https://github.com/znat/gitpulse/pull/52), or a deployed-
+                              site URL with ?story=<id> (e.g. https://<site>/?story=pr-52). When
+                              the story file isn't present locally, fetches it from the site URL
+                              (or cfg.siteUrl) and writes it under GITPULSE_DATA_DIR. Writes the
                               uploaded image URL back into the story JSON.
   --version                   Print the CLI version.
   --help                      Show this help.

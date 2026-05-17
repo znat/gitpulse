@@ -267,10 +267,10 @@
   resolved "https://registry.npmjs.org/@exodus/bytes/-/bytes-1.15.0.tgz#54479e0f406cbad024d6fe1c3190ecca4468df3b"
   integrity sha512-UY0nlA+feH81UGSHv92sLEPLCeZFjXOuHhrIo0HQydScuQc8s0A7kL/UdgwgDq8g8ilksmuoF35YVTNphV2aBQ==
 
-"@google/genai@1.44.0":
-  version "1.44.0"
-  resolved "https://registry.npmjs.org/@google/genai/-/genai-1.44.0.tgz#f533e69b3488f0ff3a29dbf7b5175c0f863671e2"
-  integrity sha512-kRt9ZtuXmz+tLlcNntN/VV4LRdpl6ZOu5B1KbfNgfR65db15O6sUQcwnwLka8sT/V6qysD93fWrgJHF2L7dA9A==
+"@google/genai@2.3.0":
+  version "2.3.0"
+  resolved "https://registry.npmjs.org/@google/genai/-/genai-2.3.0.tgz#158f9198369d33ecf1fc1d6207d991def99b3746"
+  integrity sha512-rXDhXUBj31gZafcwQFbXvt8jMrMxZoK7ECjQpk88UfA/OkZls3PtZDprT9lM3jjqRtwRjQoNLoPoNq6MlV8qLw==
   dependencies:
     google-auth-library "^10.3.0"
     p-retry "^4.6.2"

@@ -539,7 +539,10 @@ type ImageGenState = EnabledImageGen | DisabledImageGen;
 function resolveImageGeneration(cfg: RuntimeConfig): ImageGenState {
   if (!cfg.imageAi) {
     if (cfg.images?.ai) {
-      return { enabled: false, reason: 'skipped (GEMINI_API_KEY missing)' };
+      return {
+        enabled: false,
+        reason: 'skipped (GEMINI_API_KEY or GOOGLE_API_KEY missing)',
+      };
     }
     return { enabled: false, reason: 'skipped (no images.ai in .gitpulse.json)' };
   }

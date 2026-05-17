@@ -40,9 +40,18 @@ export interface ImagePromptInput {
 }
 
 export function buildImagePrompt(input: ImagePromptInput): string {
-  return STYLE_TEMPLATE
-    .replace('{themeColor}', input.themeColor)
-    .replace('{story}', input.story)
-    .replace('{scopeSummary}', input.scopeSummary)
-    .replace('{technicalDescription}', input.technicalDescription || '(not available)');
+  // One pass over the template instead of chained .replace() calls — a
+  // chained replace cascades when an earlier substitution happens to contain
+  // a later placeholder token (e.g. the LLM-generated `story` text including
+  // the literal string `{scopeSummary}`).
+  const values: Record<string, string> = {
+    '{themeColor}': input.themeColor,
+    '{story}': input.story,
+    '{scopeSummary}': input.scopeSummary,
+    '{technicalDescription}': input.technicalDescription || '(not available)',
+  };
+  return STYLE_TEMPLATE.replace(
+    /\{themeColor\}|\{story\}|\{scopeSummary\}|\{technicalDescription\}/g,
+    (key) => values[key] ?? key,
+  );
 }
