@@ -3,12 +3,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEnvLocal } from './dotenv-local.ts';
-import { runAnalyzer } from './index.ts';
-import { runBuild } from './build.ts';
-import { runImageCommand } from './image-cmd.ts';
 
-// Pull in .env.local before any module reads process.env. No-op in CI and
-// when the file is missing — see dotenv-local.ts.
+// Pull in .env.local before any subcommand module is imported. Subcommand
+// modules are loaded lazily via dynamic import below so that even a future
+// top-level `process.env.X` read in one of them sees the loaded values.
+// No-op in CI and when the file is missing — see dotenv-local.ts.
 loadEnvLocal();
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -71,15 +70,21 @@ See https://github.com/znat/gitpulse for full docs.`,
 const sub = process.argv[2];
 try {
   switch (sub) {
-    case 'analyze':
+    case 'analyze': {
+      const { runAnalyzer } = await import('./index.ts');
       await runAnalyzer();
       break;
-    case 'build':
+    }
+    case 'build': {
+      const { runBuild } = await import('./build.ts');
       await runBuild();
       break;
-    case 'image':
+    }
+    case 'image': {
+      const { runImageCommand } = await import('./image-cmd.ts');
       await runImageCommand(process.argv[3]);
       break;
+    }
     case '--version':
     case '-v':
       console.log(`${pkg.name} ${pkg.version}`);
