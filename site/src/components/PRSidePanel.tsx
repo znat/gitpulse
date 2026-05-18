@@ -16,31 +16,41 @@ export function PRSidePanel() {
 }
 
 function PanelContent() {
-  const { isOpen, isClosing, isLoading, story, error, closePanel } =
-    usePRPanel();
+  const { isOpen } = usePRPanel();
+  // Early-return BEFORE any hooks specific to the open state so the
+  // open-only effect lives in a child component that mounts/unmounts as
+  // a unit. Previously this component called `useEffect` and then did
+  // `if (!isOpen) return null` further down; SWC's minifier inlined the
+  // early-return into the JSX expression and dragged the `useEffect`
+  // call into the truthy branch, making the hook count vary between
+  // renders and triggering React #310 in production builds the first
+  // time a user opened the panel.
+  if (!isOpen) return null;
+  return <OpenPanel />;
+}
+
+function OpenPanel() {
+  const { isClosing, isLoading, story, error, closePanel } = usePRPanel();
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerElementRef = useRef<HTMLElement | null>(null);
 
-  // Focus trap and restoration
+  // Focus trap and restoration. Runs on mount (i.e. when the panel
+  // opens); the unmount cleanup restores focus + aria-hidden.
   useEffect(() => {
-    if (!isOpen || isClosing) return;
+    if (isClosing) return;
 
-    // Save the element that triggered the panel
     triggerElementRef.current = document.activeElement as HTMLElement;
 
-    // Move focus into the panel
     if (closeButtonRef.current) {
       closeButtonRef.current.focus();
     }
 
-    // Set aria-hidden on the main content to prevent background tabbing
     const mainElement = document.querySelector('main');
     if (mainElement) {
       mainElement.setAttribute('aria-hidden', 'true');
     }
 
-    // Focus trap handler
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Tab') return;
 
@@ -55,13 +65,11 @@ function PanelContent() {
       const lastFocusable = focusableArray[focusableArray.length - 1];
 
       if (e.shiftKey) {
-        // Shift+Tab: if on first element, wrap to last
         if (document.activeElement === firstFocusable) {
           e.preventDefault();
           lastFocusable?.focus();
         }
       } else {
-        // Tab: if on last element, wrap to first
         if (document.activeElement === lastFocusable) {
           e.preventDefault();
           firstFocusable?.focus();
@@ -74,19 +82,15 @@ function PanelContent() {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
 
-      // Restore aria-hidden on cleanup
       if (mainElement) {
         mainElement.removeAttribute('aria-hidden');
       }
 
-      // Restore focus to the trigger element
       if (triggerElementRef.current && typeof triggerElementRef.current.focus === 'function') {
         triggerElementRef.current.focus();
       }
     };
-  }, [isOpen, isClosing]);
-
-  if (!isOpen) return null;
+  }, [isClosing]);
 
   const onBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) closePanel();
