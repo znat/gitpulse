@@ -17,6 +17,7 @@ import {
 } from './github.ts';
 import { assessPRSize } from './size.ts';
 import { pMap } from './pmap.ts';
+import { applyIgnoreSweep } from './ignore-sweep.ts';
 import {
   SiteFetcher,
   WrongGitpulsePasswordError,
@@ -137,7 +138,27 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
     since,
     limit: cfg.limit,
   });
-  const newCommits = allCommits.filter((c) => !seenSha.has(c.sha));
+
+  // Apply curation: any PR carrying `cfg.labels.ignore` is excluded from
+  // the publication. The label set on GitHub is the source of truth, so
+  // we always query fresh and re-apply (which retroactively prunes old
+  // stories when the label is added later).
+  const ignored = gh
+    ? await gh.listLabeledPRs(owner, repo, cfg.labels.ignore)
+    : [];
+  const { ignoredShas, removedCount } = applyIgnoreSweep({
+    ignored,
+    storiesDir: cfg.storiesDir,
+  });
+  if (ignored.length > 0 || removedCount > 0) {
+    console.log(
+      `[gitpulse] label '${cfg.labels.ignore}': ${ignored.length} PRs matched, ${removedCount} prior stories removed`,
+    );
+  }
+
+  const newCommits = allCommits.filter(
+    (c) => !seenSha.has(c.sha) && !ignoredShas.has(c.sha),
+  );
   console.log(
     `[gitpulse] commits in window: ${allCommits.length}, new (not in manifest): ${newCommits.length}`,
   );
@@ -159,8 +180,9 @@ export async function runAnalyzer(): Promise<AnalyzerResult> {
         imageGen: imageGen.enabled ? imageGen : undefined,
       });
       if (result.ok) {
-        newStoriesCount++;
-        console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✓ ${result.tag}`);
+        if (!result.skipped) newStoriesCount++;
+        const mark = result.skipped ? '–' : '✓';
+        console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ${mark} ${result.tag}`);
       } else {
         failed++;
         console.log(`  ${baseCommit.shortSha} ${truncate(baseCommit.subject, 60)} … ✗ ${result.error}`);
@@ -468,6 +490,7 @@ async function processOneRelease(opts: {
 interface ProcessOk {
   ok: true;
   tag: string;
+  skipped?: boolean;
 }
 interface ProcessFail {
   ok: false;
@@ -493,6 +516,15 @@ async function processCommit(opts: {
     const ctx = gh
       ? await gh.fetchCommitContext(owner, repo, commit.sha)
       : { pr: null, commitAuthor: null };
+
+    // Fast path for PRs labeled after they merged but before this run
+    // reached them — the up-front sweep already filtered most; this
+    // handles the edge case where the label landed between sweep and
+    // per-commit fetch.
+    if (ctx.pr?.labels.includes(cfg.labels.ignore)) {
+      return { ok: true, tag: `pr#${ctx.pr.number} | ignored`, skipped: true };
+    }
+
     const promptContext = ctx.pr
       ? formatPRContext(commit, ctx.pr)
       : formatCommitAsPRContext(commit);

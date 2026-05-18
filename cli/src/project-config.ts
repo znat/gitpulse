@@ -57,7 +57,14 @@ const ImagesSchema = z.strictObject({
   ai: ImageAISchema.optional(),
 });
 
-const ProjectConfigSchema = z.strictObject({
+// Curation labels. Keyed by action so new actions (group, regenerate)
+// can land later without breaking existing config files. Unknown keys
+// are rejected by strictObject so typos surface loudly.
+const LabelsSchema = z.strictObject({
+  ignore: z.string().min(1).optional(),
+});
+
+export const ProjectConfigSchema = z.strictObject({
   publicationTitle: z.string().trim().min(1).optional(),
   publicationSubtitle: z.string().trim().min(1).optional(),
   bootstrapDays: z.number().int().positive().optional(),
@@ -68,6 +75,7 @@ const ProjectConfigSchema = z.strictObject({
   releasesPerPage: z.number().int().positive().optional(),
   theme: ThemeSchema.optional(),
   images: ImagesSchema.optional(),
+  labels: LabelsSchema.optional(),
 });
 
 export type ProjectConfig = z.infer<typeof ProjectConfigSchema>;

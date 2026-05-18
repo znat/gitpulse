@@ -1,6 +1,7 @@
 import { dirname } from 'node:path';
 import { loadProjectConfig, type ProjectConfig } from './project-config.ts';
 import { findUp } from './find-up.ts';
+import { DEFAULT_LABELS } from './labels.ts';
 import type { ImageAIConfig } from './image/generator.ts';
 
 export interface RuntimeConfig {
@@ -37,6 +38,9 @@ export interface RuntimeConfig {
   // "image generation disabled" and logs why.
   imageAi?: ImageAIConfig;
   images?: ProjectConfig['images'];
+  labels: {
+    ignore: string;
+  };
 }
 
 export function loadConfig(env = process.env): RuntimeConfig {
@@ -96,6 +100,9 @@ export function loadConfig(env = process.env): RuntimeConfig {
     },
     imageAi: resolveImageAi(projectConfig, env),
     images: projectConfig.images,
+    labels: {
+      ignore: projectConfig.labels?.ignore ?? DEFAULT_LABELS.ignore,
+    },
   };
 }
 
