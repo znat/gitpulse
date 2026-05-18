@@ -98,6 +98,10 @@ export interface Release {
   // produces the same inputsHash for an already-on-disk release, skip the
   // LLM call entirely.
   inputsHash: string;
+  // AI-generated "Special Edition" illustration for the release, uploaded
+  // to the configured ImageStorage. Absent when image generation is
+  // disabled, failed, or the release predates this feature.
+  imageUrl?: string;
 }
 
 export interface ReleaseManifestEntry {

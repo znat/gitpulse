@@ -1,11 +1,12 @@
 // Editorial "Special Edition" card for releases. Renders inline at the top
 // of its publication day in the homepage feed. Adapted from gitsky's
-// SpecialEditionCard — drops imageUrl, highlightCount, slug/owner-context
+// SpecialEditionCard — drops highlightCount and the slug/owner-context
 // (gitpulse is single-repo), reduces the stats strip from 4 → 3 cells.
 
 import Link from 'next/link';
 import { formatLines, type Release, type ReleaseTopStory } from '@/lib/releases';
 import { releasePath } from '@/lib/urls';
+import { EditionIllustration } from '@/components/ReleaseIllustration';
 
 export function SpecialEditionCard({ release }: { release: Release }) {
   const url = releasePath(release);
@@ -21,6 +22,9 @@ export function SpecialEditionCard({ release }: { release: Release }) {
             <Quip text={release.quip} />
             <ReleaseName name={release.name} />
           </Link>
+          {release.imageUrl && (
+            <EditionIllustration url={release.imageUrl} tag={release.tag} />
+          )}
           <StatsStrip release={release} />
           {topStories.length > 0 && <TopStoriesList stories={topStories} />}
           <CtaRow url={url} prCount={release.prCount} />

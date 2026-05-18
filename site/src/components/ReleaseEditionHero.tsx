@@ -1,10 +1,11 @@
 // Lifted from gitsky's apps/web/app/[owner]/[repo]/releases/[tag]/components/
-// ReleaseEditionHero.tsx. Drops imageUrl block (deferred for v1) and the
-// owner/repo context for the "All Releases" link.
+// ReleaseEditionHero.tsx. Drops the owner/repo context for the "All Releases"
+// link (gitpulse is single-repo).
 
 import Link from 'next/link';
 import { formatReleaseDate, type Release } from '@/lib/releases';
 import { releasesIndexPath } from '@/lib/urls';
+import { HeroIllustration } from '@/components/ReleaseIllustration';
 
 export function ReleaseEditionHero({ release }: { release: Release }) {
   const dateStr = formatReleaseDate(release.publishedAt);
@@ -16,6 +17,9 @@ export function ReleaseEditionHero({ release }: { release: Release }) {
       <VersionBadge tag={release.tag} />
       <Quip text={release.quip} />
       <ReleaseName name={release.name} date={dateStr} />
+      {release.imageUrl && (
+        <HeroIllustration url={release.imageUrl} tag={release.tag} />
+      )}
       {release.releaseStory && <ReleaseStory text={release.releaseStory} />}
       <Link
         href={releasesIndexPath()}
