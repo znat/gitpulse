@@ -27,6 +27,7 @@ export interface PRData {
   deletions: number;
   changedFiles: number;
   linkedIssues: LinkedIssue[];
+  labels: string[];
 }
 
 export interface LinkedIssue {
@@ -97,6 +98,9 @@ interface CommitContextResponse {
               url: string;
             }>;
           };
+          labels: {
+            nodes: Array<{ name: string }>;
+          };
         }>;
       };
     } | null;
@@ -130,6 +134,9 @@ const COMMIT_CONTEXT_QUERY = `
                   url
                 }
               }
+              labels(first: 100) {
+                nodes { name }
+              }
             }
           }
         }
@@ -149,6 +156,30 @@ const REPO_QUERY = `
 
 interface RepoQueryResponse {
   repository: { description: string | null; url: string };
+}
+
+const LABEL_SEARCH_QUERY = `
+  query LabelSearch($query: String!, $cursor: String) {
+    search(query: $query, type: ISSUE, first: 100, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        ... on PullRequest {
+          number
+          mergeCommit { oid }
+        }
+      }
+    }
+  }
+`;
+
+interface LabelSearchResponse {
+  search: {
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    nodes: Array<{
+      number: number;
+      mergeCommit: { oid: string } | null;
+    } | null>;
+  };
 }
 
 export class GitHubClient {
@@ -256,6 +287,46 @@ export class GitHubClient {
     }
   }
 
+  // Search for merged PRs carrying a curation label (e.g. `gitpulse:ignore`).
+  // GraphQL search is the cheapest way to discover retroactively-labeled
+  // PRs without re-fetching context for every already-seen commit.
+  async listLabeledPRs(
+    owner: string,
+    repo: string,
+    label: string,
+  ): Promise<Array<{ number: number; sha: string }>> {
+    const results: Array<{ number: number; sha: string }> = [];
+    let cursor: string | null = null;
+    // Paginate defensively. In practice a curation label has <100 PRs and
+    // a single page is enough, but guard against future scale.
+    for (let page = 0; page < 20; page++) {
+      let response: LabelSearchResponse;
+      try {
+        const safeLabel = label.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        response = await this.gql<LabelSearchResponse>(LABEL_SEARCH_QUERY, {
+          query: `repo:${owner}/${repo} is:pr is:merged label:"${safeLabel}"`,
+          cursor,
+        });
+      } catch (err) {
+        // Return what we have so far. Returning [] on partial failure is
+        // safer than throwing — a flaky search call should not make hidden
+        // PRs reappear, but it also should not lose PRs already collected.
+        console.warn(
+          `[gitpulse] label search failed for ${label}: ${err instanceof Error ? err.message : err}`,
+        );
+        return results;
+      }
+      for (const node of response.search.nodes) {
+        if (node?.mergeCommit?.oid) {
+          results.push({ number: node.number, sha: node.mergeCommit.oid });
+        }
+      }
+      if (!response.search.pageInfo.hasNextPage) break;
+      cursor = response.search.pageInfo.endCursor;
+    }
+    return results;
+  }
+
   async fetchCommitContext(
     owner: string,
     repo: string,
@@ -300,6 +371,7 @@ export class GitHubClient {
             body: i.body ?? '',
             url: i.url,
           })),
+          labels: prNode.labels.nodes.map((l) => l.name),
         }
       : null;
 
