@@ -134,7 +134,7 @@ const COMMIT_CONTEXT_QUERY = `
                   url
                 }
               }
-              labels(first: 20) {
+              labels(first: 100) {
                 nodes { name }
               }
             }
@@ -302,8 +302,9 @@ export class GitHubClient {
     for (let page = 0; page < 20; page++) {
       let response: LabelSearchResponse;
       try {
+        const safeLabel = label.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
         response = await this.gql<LabelSearchResponse>(LABEL_SEARCH_QUERY, {
-          query: `repo:${owner}/${repo} is:pr is:merged label:"${label}"`,
+          query: `repo:${owner}/${repo} is:pr is:merged label:"${safeLabel}"`,
           cursor,
         });
       } catch (err) {
