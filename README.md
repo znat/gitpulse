@@ -406,7 +406,7 @@ Optional file at your repo root. All fields are optional; omit any you don't nee
 
 | Var | What it is |
 |---|---|
-| `OPENAI_API_KEY` | Your LLM provider's API key. The variable name is a fixed convention — the value is whatever key your chosen provider issues (OpenAI, Anthropic, MiniMax, OpenRouter, etc.). |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Your LLM provider's API key. Use the name matching `AI_PROTOCOL`: `OPENAI_API_KEY` for `openai` (the default, also used for OpenAI-compatible providers via `AI_BASE_URL` — MiniMax, OpenRouter, etc.), `ANTHROPIC_API_KEY` for `anthropic`. |
 
 ### Common optional env vars
 
@@ -426,7 +426,7 @@ Optional file at your repo root. All fields are optional; omit any you don't nee
 
 ### LLM providers
 
-The CLI reads provider config from environment variables. The secret env var is always `OPENAI_API_KEY` — its value is whichever provider's key matches your `AI_BASE_URL` and `AI_PROTOCOL`.
+The CLI reads provider config from environment variables. Pick the key name to match your `AI_PROTOCOL`: `OPENAI_API_KEY` for `openai` (covers OpenAI itself plus OpenAI-compatible providers routed via `AI_BASE_URL` — MiniMax, OpenRouter, etc.), `ANTHROPIC_API_KEY` for `anthropic`.
 
 **Where to wire them, by deploy target:**
 
@@ -440,7 +440,7 @@ jobs:
       ai-protocol: openai            # or "anthropic"
       ai-base-url: ""                # see provider-specific values below
       ai-model: gpt-4o-mini
-    secrets: inherit                 # supplies OPENAI_API_KEY repo secret
+    secrets: inherit                 # supplies OPENAI_API_KEY or ANTHROPIC_API_KEY repo secret
 ```
 
 For **Vercel / Netlify / Cloudflare Pages**, set the same names as project Environment Variables in the dashboard. See the Quickstart section for each.
@@ -510,7 +510,7 @@ OPENAI_API_KEY=<your openrouter key>
 ```bash
 AI_PROTOCOL=anthropic
 AI_MODEL=claude-sonnet-4-6
-OPENAI_API_KEY=<your anthropic key>
+ANTHROPIC_API_KEY=<your anthropic key>
 ```
 
 `AI_BASE_URL` isn't needed — uses Anthropic's default endpoint.

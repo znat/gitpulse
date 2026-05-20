@@ -66,9 +66,13 @@ on:
         default: ""
     secrets:
       OPENAI_API_KEY:
-        required: true
-        # Holds the API key for whichever provider is configured via ai-base-url + ai-protocol.
-        # Always required — the analyzer will not run without it.
+        required: false
+        # Required when ai-protocol=openai (covers OpenAI and any OpenAI-compatible
+        # provider routed via ai-base-url — MiniMax, OpenRouter, etc.).
+      ANTHROPIC_API_KEY:
+        required: false
+        # Required when ai-protocol=anthropic. Pass via `secrets: inherit` or map
+        # explicitly under `secrets:` in the calling workflow.
 
 permissions:
   contents: read
@@ -111,6 +115,7 @@ jobs:
           GITPULSE_INCLUDE_PRERELEASES: ${{ inputs.include-prereleases }}
           GITPULSE_SITE_URL: ${{ inputs.site-url }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build site (gitpulse build)

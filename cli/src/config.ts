@@ -64,7 +64,8 @@ export function loadConfig(env = process.env): RuntimeConfig {
         'Netlify: REPOSITORY_URL).',
     );
   }
-  const apiKey = required(env, 'OPENAI_API_KEY');
+  const protocol = validateProtocol(env.AI_PROTOCOL);
+  const apiKey = resolveTextApiKey(env, protocol);
   const repoDir = resolveRepoDir(env);
   // Match build.ts default so the zero-config consumer flow
   // (analyze → build) wires together without GITPULSE_DATA_DIR.
@@ -94,7 +95,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
     ai: {
       apiKey,
       model: env.AI_MODEL ?? 'gpt-4o-mini',
-      protocol: (env.AI_PROTOCOL as 'openai' | 'anthropic') ?? 'openai',
+      protocol,
       baseURL: env.AI_BASE_URL || undefined,
       temperature: Number(env.AI_TEMPERATURE ?? 0),
     },
@@ -218,8 +219,29 @@ function detectDeployedUrl(env: NodeJS.ProcessEnv): string | undefined {
   return undefined;
 }
 
-function required(env: NodeJS.ProcessEnv, name: string): string {
+// Validate AI_PROTOCOL is one of the allowed values.
+// Returns 'openai' as the default when not set.
+function validateProtocol(value: string | undefined): 'openai' | 'anthropic' {
+  const allowedProtocols = ['openai', 'anthropic'] as const;
+  if (!value) return 'openai';
+  if (allowedProtocols.includes(value as any)) {
+    return value as 'openai' | 'anthropic';
+  }
+  throw new Error(
+    `Invalid AI_PROTOCOL: "${value}". Must be one of: ${allowedProtocols.join(', ')}`,
+  );
+}
+
+// Pick the text-gen API key based on the configured protocol. The env var
+// name must match the provider: ANTHROPIC_API_KEY for anthropic,
+// OPENAI_API_KEY for openai (also covers OpenAI-compatible providers routed
+// via AI_BASE_URL — MiniMax, OpenRouter, etc.).
+function resolveTextApiKey(
+  env: NodeJS.ProcessEnv,
+  protocol: 'openai' | 'anthropic',
+): string {
+  const name = protocol === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
   const v = env[name];
-  if (!v) throw new Error(`Missing required env var: ${name}`);
+  if (!v) throw new Error(`Missing required env var: ${name} (AI_PROTOCOL=${protocol})`);
   return v;
 }
