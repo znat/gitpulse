@@ -62,4 +62,26 @@ describe('loadConfig AI key resolution', () => {
       ),
     ).toThrow(/AI_PROTOCOL/);
   });
+
+  it('throws on wrong-case AI_PROTOCOL instead of silently routing to openai', () => {
+    expect(() =>
+      loadConfig(
+        baseEnv({
+          AI_PROTOCOL: 'Anthropic',
+          ANTHROPIC_API_KEY: 'sk-anthropic',
+        }),
+      ),
+    ).toThrow(/AI_PROTOCOL.*Anthropic/);
+  });
+
+  it('throws on AI_PROTOCOL with trailing whitespace', () => {
+    expect(() =>
+      loadConfig(
+        baseEnv({
+          AI_PROTOCOL: 'anthropic ',
+          ANTHROPIC_API_KEY: 'sk-anthropic',
+        }),
+      ),
+    ).toThrow(/AI_PROTOCOL/);
+  });
 });
