@@ -68,7 +68,7 @@ function LeadStory({ story, rank }: { story: ReleaseTopStory; rank: number }) {
       </h2>
       <StoryMeta story={story} />
       {story.standfirst && (
-        <p className="font-feed-body text-[0.95rem] leading-[1.65] text-foreground-secondary mb-4">
+        <p className="font-feed-body text-lg leading-[1.7] text-foreground-secondary mb-4">
           {story.standfirst}
         </p>
       )}
@@ -95,7 +95,7 @@ function SecondaryStories({ stories }: { stories: ReleaseTopStory[] }) {
           </h3>
           <StoryMeta story={story} />
           {story.standfirst && (
-            <p className="font-feed-body text-[0.9rem] leading-[1.6] text-foreground-secondary line-clamp-3">
+            <p className="font-feed-body text-lg leading-[1.7] text-foreground-secondary line-clamp-3">
               {story.standfirst}
             </p>
           )}
@@ -125,12 +125,12 @@ function CompactStories({
           <div className="min-w-0">
             <Link
               href={storyHref(story)}
-              className="font-feed-display text-base text-foreground-secondary leading-[1.35] hover:opacity-80 transition-colors"
+              className="font-feed-display text-lg text-foreground-secondary leading-[1.35] hover:opacity-80 transition-colors"
             >
               {story.headline}
             </Link>
             {story.standfirst && (
-              <div className="font-feed-body text-[0.8rem] text-muted leading-[1.5] mt-0.5">
+              <div className="font-feed-body text-base text-muted leading-[1.6] mt-0.5">
                 {story.standfirst}
               </div>
             )}
