@@ -50,4 +50,16 @@ describe('loadConfig AI key resolution', () => {
       loadConfig(baseEnv({ AI_PROTOCOL: 'anthropic' })),
     ).toThrow(/ANTHROPIC_API_KEY/);
   });
+
+  it('throws when AI_PROTOCOL has an invalid value', () => {
+    expect(() =>
+      loadConfig(
+        baseEnv({
+          AI_PROTOCOL: 'invalid-protocol',
+          OPENAI_API_KEY: 'sk-openai',
+          ANTHROPIC_API_KEY: 'sk-anthropic',
+        }),
+      ),
+    ).toThrow(/AI_PROTOCOL/);
+  });
 });

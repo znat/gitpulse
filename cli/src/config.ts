@@ -64,7 +64,7 @@ export function loadConfig(env = process.env): RuntimeConfig {
         'Netlify: REPOSITORY_URL).',
     );
   }
-  const protocol = (env.AI_PROTOCOL as 'openai' | 'anthropic') ?? 'openai';
+  const protocol = validateProtocol(env.AI_PROTOCOL);
   const apiKey = resolveTextApiKey(env, protocol);
   const repoDir = resolveRepoDir(env);
   // Match build.ts default so the zero-config consumer flow
@@ -217,6 +217,19 @@ function detectDeployedUrl(env: NodeJS.ProcessEnv): string | undefined {
     return env.CF_PAGES_URL;
   }
   return undefined;
+}
+
+// Validate AI_PROTOCOL is one of the allowed values.
+// Returns 'openai' as the default when not set.
+function validateProtocol(value: string | undefined): 'openai' | 'anthropic' {
+  const allowedProtocols = ['openai', 'anthropic'] as const;
+  if (!value) return 'openai';
+  if (allowedProtocols.includes(value as any)) {
+    return value as 'openai' | 'anthropic';
+  }
+  throw new Error(
+    `Invalid AI_PROTOCOL: "${value}". Must be one of: ${allowedProtocols.join(', ')}`,
+  );
 }
 
 // Pick the text-gen API key based on the configured protocol. The env var
