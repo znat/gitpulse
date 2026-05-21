@@ -95,7 +95,7 @@ function ChangelogItem({ story }: { story: Story }) {
       <div className="min-w-0">
         <Link
           href={storyPath(story)}
-          className="font-feed-display text-[0.9375rem] text-foreground-secondary leading-[1.35] hover:opacity-80 transition-colors"
+          className="font-feed-display text-base text-foreground-secondary leading-[1.35] hover:opacity-80 transition-colors"
         >
           {story.headline}
         </Link>
