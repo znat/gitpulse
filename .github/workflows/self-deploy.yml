@@ -73,6 +73,11 @@ jobs:
           GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}
           OPENAI_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Image generation: Gemini for the model, Vercel Blob for hosting.
+          # Both must be set together — adding only one trips the other half
+          # of the pipeline (cfg.imageAi vs createStorage).
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
 
       - name: Stage analyzer output for the in-repo site
         run: |
