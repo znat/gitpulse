@@ -1,14 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { put, list as blobList, del } from '@vercel/blob';
-import { VercelBlobStorage, storeIdToHost } from './vercel-blob.ts';
+import {
+  VercelBlobStorage,
+  storeIdToHost,
+  storeIdFromToken,
+} from './vercel-blob.ts';
 
 vi.mock('@vercel/blob', () => ({
-  put: vi.fn(async () => ({ url: 'mocked' })),
+  put: vi.fn(async () => ({
+    url: 'https://abcdef123.public.blob.vercel-storage.com/a/b/c.webp',
+  })),
   list: vi.fn(),
   del: vi.fn(async () => undefined),
 }));
 
-const TOKEN = 'vercel_blob_rw_FAKE_TOKEN_FOR_TESTS';
+// Token that encodes the storeId AbCdEf123 — the suffix after `vercel_blob_rw_`
+// up to the next underscore is the storeId without the `store_` prefix.
+const TOKEN = 'vercel_blob_rw_AbCdEf123_secret';
 const STORE_ID = 'store_AbCdEf123';
 
 describe('storeIdToHost', () => {
@@ -42,16 +50,72 @@ describe('storeIdToHost', () => {
   });
 });
 
+describe('storeIdFromToken', () => {
+  it('extracts the suffix between vercel_blob_rw_ and the next underscore', () => {
+    expect(storeIdFromToken('vercel_blob_rw_AbCdEf123_secretpart')).toBe(
+      'AbCdEf123',
+    );
+  });
+
+  it('throws on tokens not matching the expected shape', () => {
+    expect(() => storeIdFromToken('vercel_blob_ro_abc_secret')).toThrow(
+      /expected `vercel_blob_rw_/,
+    );
+    expect(() => storeIdFromToken('not-a-token')).toThrow(
+      /expected `vercel_blob_rw_/,
+    );
+    expect(() => storeIdFromToken('vercel_blob_rw__secret')).toThrow(
+      /expected `vercel_blob_rw_/,
+    );
+  });
+});
+
 describe('VercelBlobStorage', () => {
   beforeEach(() => {
     vi.mocked(put).mockClear();
+    vi.mocked(put).mockResolvedValue({
+      url: 'https://abcdef123.public.blob.vercel-storage.com/a/b/c.webp',
+    } as never);
     vi.mocked(blobList).mockReset();
     vi.mocked(del).mockClear();
   });
 
   it('throws if BLOB_READ_WRITE_TOKEN is missing', () => {
-    expect(() => new VercelBlobStorage({ storeId: STORE_ID }, {})).toThrow(
-      /BLOB_READ_WRITE_TOKEN/,
+    expect(() => new VercelBlobStorage({}, {})).toThrow(/BLOB_READ_WRITE_TOKEN/);
+  });
+
+  it('throws when opts.storeId conflicts with the storeId encoded in the token', () => {
+    expect(
+      () =>
+        new VercelBlobStorage(
+          { storeId: 'store_DifferentStore' },
+          { BLOB_READ_WRITE_TOKEN: TOKEN },
+        ),
+    ).toThrow(/points to store "AbCdEf123" but .gitpulse.json declares storeId/);
+  });
+
+  it('accepts opts.storeId when it matches the token (case-insensitive, prefix-tolerant)', () => {
+    expect(
+      () =>
+        new VercelBlobStorage(
+          { storeId: STORE_ID },
+          { BLOB_READ_WRITE_TOKEN: TOKEN },
+        ),
+    ).not.toThrow();
+    // Lowercase variant should also pass.
+    expect(
+      () =>
+        new VercelBlobStorage(
+          { storeId: 'store_abcdef123' },
+          { BLOB_READ_WRITE_TOKEN: TOKEN },
+        ),
+    ).not.toThrow();
+  });
+
+  it('works without opts.storeId — host is derived from the token', () => {
+    const storage = new VercelBlobStorage({}, { BLOB_READ_WRITE_TOKEN: TOKEN });
+    expect(storage.urlFor('foo.txt')).toBe(
+      'https://abcdef123.public.blob.vercel-storage.com/foo.txt',
     );
   });
 
@@ -69,6 +133,21 @@ describe('VercelBlobStorage', () => {
       addRandomSuffix: false,
       token: TOKEN,
     });
+  });
+
+  it('upload returns the canonical URL the SDK reports — not a computed one', async () => {
+    // Even if the SDK reports a wildly different host (e.g. a CDN rewrite or
+    // a future change in URL format), we should pass that through verbatim
+    // rather than synthesizing one from storeId.
+    vi.mocked(put).mockResolvedValueOnce({
+      url: 'https://some-other-host.example/a/b/c.webp',
+    } as never);
+    const storage = new VercelBlobStorage(
+      { storeId: STORE_ID },
+      { BLOB_READ_WRITE_TOKEN: TOKEN },
+    );
+    const url = await storage.upload('a/b/c.webp', Buffer.from('x'), 'image/webp');
+    expect(url).toBe('https://some-other-host.example/a/b/c.webp');
   });
 
   it('urlFor produces the deterministic public URL', () => {

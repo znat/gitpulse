@@ -3,8 +3,7 @@
   "publicationSubtitle": "Development activity intelligence for gitpulse itself",
   "images": {
     "storage": {
-      "provider": "vercel-blob",
-      "storeId": "store_jrSOlxo1lISQ2owg"
+      "provider": "vercel-blob"
     },
     "ai": {
       "provider": "gemini",

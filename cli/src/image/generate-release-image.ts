@@ -55,6 +55,5 @@ export async function generateReleaseImage(
   // Mirror the on-disk filename encoding so the storage key is one-to-one
   // with the JSON file for that release.
   const key = `releases/${encodeFilename(input.tag)}.${ext}`;
-  await input.storage.upload(key, image.buffer, image.mimeType);
-  return input.storage.urlFor(key);
+  return await input.storage.upload(key, image.buffer, image.mimeType);
 }

@@ -407,6 +407,16 @@ async function processOneRelease(opts: {
     }
   }
 
+  // Backfill: if the existing imageUrl points to a different storage host
+  // than the current one (e.g. config/token drift wrote URLs into a store
+  // we no longer use), treat it as missing so the image regenerates with
+  // a URL that actually resolves.
+  if (existingImageUrl && imageGen) {
+    if (!isUrlOnHost(existingImageUrl, imageGen.storage)) {
+      existingImageUrl = undefined;
+    }
+  }
+
   // Generate quip + releaseStory via LLM. On failure, use the fallback so
   // the file still gets written (the analyzer doesn't bail on one release).
   if (!skipLLM) {
@@ -636,6 +646,17 @@ function resolveImageGeneration(cfg: RuntimeConfig): ImageGenState {
 
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
+}
+
+// True when `url` is hosted on the same origin the storage backend writes to.
+// Used to invalidate stale imageUrl values that point at a previous store.
+function isUrlOnHost(url: string, storage: ImageStorage): boolean {
+  try {
+    const expected = new URL(storage.urlFor('x')).host;
+    return new URL(url).host === expected;
+  } catch {
+    return false;
+  }
 }
 
 // Prune stale release JSON files that no longer meet current filters or exceed

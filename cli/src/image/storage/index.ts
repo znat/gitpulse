@@ -7,7 +7,9 @@ export { VercelBlobStorage } from './vercel-blob.ts';
 export function createStorage(config: StorageConfig): ImageStorage {
   switch (config.provider) {
     case 'vercel-blob':
-      return new VercelBlobStorage({ storeId: config.storeId });
+      return new VercelBlobStorage(
+        config.storeId ? { storeId: config.storeId } : {},
+      );
     case 'r2':
     case 's3':
     case 'supabase':
