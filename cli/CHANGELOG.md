@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/znat/gitpulse/compare/v0.1.6...v0.2.0) (2026-05-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** AI_PROTOCOL=anthropic now requires ANTHROPIC_API_KEY. OPENAI_API_KEY is no longer accepted as a substitute under the anthropic protocol.
+
+### Features
+
+* **cli:** select AI key by AI_PROTOCOL (OPENAI/ANTHROPIC) ([#60](https://github.com/znat/gitpulse/issues/60)) ([2377078](https://github.com/znat/gitpulse/commit/23770783f190f261cdc4f2da7af667aa2b172483))
+
 ## [0.1.6](https://github.com/znat/gitpulse/compare/v0.1.5...v0.1.6) (2026-05-19)
 
 
