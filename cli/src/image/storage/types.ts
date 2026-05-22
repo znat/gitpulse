@@ -12,6 +12,10 @@ export interface ImageStorage {
   urlFor(key: string): string;
   list(prefix: string): Promise<string[]>;
   delete(keys: string[]): Promise<void>;
+  // True when `url` is hosted by this backend's store. Used by the analyzer
+  // to detect stale imageUrl values from a previous store, without depending
+  // on exact host equality (which is brittle if the URL format ever changes).
+  ownsUrl(url: string): boolean;
 }
 
 // Discriminated union so future providers can land without breaking

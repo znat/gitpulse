@@ -12,6 +12,11 @@ export interface VercelBlobStorageOptions {
 export class VercelBlobStorage implements ImageStorage {
   private readonly token: string;
   private readonly host: string;
+  // Lowercased storeId (without the `store_` prefix). The store's identity
+  // for the purposes of ownsUrl() — independent of how the URL is shaped,
+  // so a future CDN/format change in Vercel's URLs still matches as long as
+  // the storeId appears as the leftmost subdomain label.
+  private readonly storeSlug: string;
 
   constructor(opts: VercelBlobStorageOptions = {}, env: NodeJS.ProcessEnv = process.env) {
     const token = env.BLOB_READ_WRITE_TOKEN;
@@ -21,17 +26,17 @@ export class VercelBlobStorage implements ImageStorage {
       );
     }
     const tokenStoreId = storeIdFromToken(token);
+    this.storeSlug = normalizeStoreId(tokenStoreId);
     if (opts.storeId) {
-      const want = normalizeStoreId(opts.storeId);
-      const got = normalizeStoreId(tokenStoreId);
-      if (want !== got) {
+      const declared = normalizeStoreId(opts.storeId);
+      if (declared !== this.storeSlug) {
         throw new Error(
-          `BLOB_READ_WRITE_TOKEN points to store "${tokenStoreId}" but .gitpulse.json declares storeId "${opts.storeId}". Either remove storeId from .gitpulse.json (it's derived from the token) or set a token for the declared store.`,
+          `BLOB_READ_WRITE_TOKEN points to store "${this.storeSlug}" but .gitpulse.json declares storeId "${declared}" (both normalized: prefix stripped, lowercased). Either remove storeId from .gitpulse.json (it's derived from the token) or set a token for the declared store.`,
         );
       }
     }
     this.token = token;
-    this.host = storeIdToHost(tokenStoreId);
+    this.host = `${this.storeSlug}.public.blob.vercel-storage.com`;
   }
 
   async upload(key: string, body: Buffer, contentType: string): Promise<string> {
@@ -68,6 +73,23 @@ export class VercelBlobStorage implements ImageStorage {
     const urls = keys.map((k) => this.urlFor(k));
     await del(urls, { token: this.token });
   }
+
+  // True when `url` is hosted by this backend's store. Used by the analyzer
+  // to detect stale imageUrl values that point at a previous store.
+  //
+  // Matches by the leftmost subdomain label (the storeId) rather than the
+  // full host, so a URL like `<storeSlug>.public.blob.vercel-storage.com`
+  // and a hypothetical future variant (different domain, same storeId
+  // subdomain) both pass — only a real change of store is treated as stale.
+  ownsUrl(url: string): boolean {
+    try {
+      const host = new URL(url).host;
+      const leftmost = host.split('.')[0]?.toLowerCase() ?? '';
+      return leftmost === this.storeSlug;
+    } catch {
+      return false;
+    }
+  }
 }
 
 // Vercel Blob public URLs follow the pattern
@@ -90,8 +112,14 @@ function normalizeStoreId(storeId: string): string {
 // where the suffix is the storeId without the `store_` prefix. Extracting it
 // here means callers don't have to maintain a separate `storeId` in config
 // just to compute the public URL host.
+//
+// `[^_]+` (anything but underscore) rather than a stricter character class:
+// Vercel doesn't document an allowed-character whitelist for storeIds, so we
+// only commit to the separator (underscore between the three token parts).
+// If Vercel issues a token whose storeId contains hyphens or other characters,
+// we still extract it correctly instead of throwing at startup.
 export function storeIdFromToken(token: string): string {
-  const m = /^vercel_blob_rw_([A-Za-z0-9]+)_/.exec(token.trim());
+  const m = /^vercel_blob_rw_([^_]+)_/.exec(token.trim());
   if (!m) {
     throw new Error(
       'BLOB_READ_WRITE_TOKEN is not in the expected `vercel_blob_rw_<storeId>_<secret>` format',

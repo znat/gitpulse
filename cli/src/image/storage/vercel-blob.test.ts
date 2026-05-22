@@ -57,6 +57,13 @@ describe('storeIdFromToken', () => {
     );
   });
 
+  it('accepts non-alphanumeric characters in the storeId (e.g. hyphens)', () => {
+    // Vercel doesn't document an allowed-character whitelist for storeIds,
+    // so the parser must not assume they're alphanumeric-only.
+    expect(storeIdFromToken('vercel_blob_rw_Ab-Cd-Ef_secret')).toBe('Ab-Cd-Ef');
+    expect(storeIdFromToken('vercel_blob_rw_abc.def_secret')).toBe('abc.def');
+  });
+
   it('throws on tokens not matching the expected shape', () => {
     expect(() => storeIdFromToken('vercel_blob_ro_abc_secret')).toThrow(
       /expected `vercel_blob_rw_/,
@@ -91,7 +98,9 @@ describe('VercelBlobStorage', () => {
           { storeId: 'store_DifferentStore' },
           { BLOB_READ_WRITE_TOKEN: TOKEN },
         ),
-    ).toThrow(/points to store "AbCdEf123" but .gitpulse.json declares storeId/);
+    ).toThrow(
+      /points to store "abcdef123" but .gitpulse.json declares storeId "differentstore"/,
+    );
   });
 
   it('accepts opts.storeId when it matches the token (case-insensitive, prefix-tolerant)', () => {
@@ -135,19 +144,62 @@ describe('VercelBlobStorage', () => {
     });
   });
 
-  it('upload returns the canonical URL the SDK reports — not a computed one', async () => {
-    // Even if the SDK reports a wildly different host (e.g. a CDN rewrite or
-    // a future change in URL format), we should pass that through verbatim
-    // rather than synthesizing one from storeId.
+  it('upload returns the canonical URL the SDK reports — passthrough, not synthesized', async () => {
+    // Whatever URL @vercel/blob returns from put() is the source of truth
+    // for where the blob actually landed; the analyzer bakes that URL into
+    // release/story JSON. Synthesizing a URL from storeId is what caused
+    // the original drift bug.
     vi.mocked(put).mockResolvedValueOnce({
-      url: 'https://some-other-host.example/a/b/c.webp',
+      url: 'https://abcdef123.public.blob.vercel-storage.com/a/b/c.webp?v=2',
     } as never);
     const storage = new VercelBlobStorage(
       { storeId: STORE_ID },
       { BLOB_READ_WRITE_TOKEN: TOKEN },
     );
     const url = await storage.upload('a/b/c.webp', Buffer.from('x'), 'image/webp');
-    expect(url).toBe('https://some-other-host.example/a/b/c.webp');
+    expect(url).toBe(
+      'https://abcdef123.public.blob.vercel-storage.com/a/b/c.webp?v=2',
+    );
+  });
+
+  it('ownsUrl: matches URLs whose leftmost subdomain is the storeId', () => {
+    const storage = new VercelBlobStorage(
+      { storeId: STORE_ID },
+      { BLOB_READ_WRITE_TOKEN: TOKEN },
+    );
+    // Canonical URL (what put() returns today).
+    expect(
+      storage.ownsUrl(
+        'https://abcdef123.public.blob.vercel-storage.com/releases/v1.jpg',
+      ),
+    ).toBe(true);
+    // Hypothetical future variant — same store, different domain shape.
+    // Should still match: the staleness check is about the store, not the
+    // exact host, so URL-format changes don't cause unnecessary regens.
+    expect(
+      storage.ownsUrl('https://abcdef123.cdn.example/releases/v1.jpg'),
+    ).toBe(true);
+  });
+
+  it('ownsUrl: rejects URLs from a different store', () => {
+    const storage = new VercelBlobStorage(
+      { storeId: STORE_ID },
+      { BLOB_READ_WRITE_TOKEN: TOKEN },
+    );
+    expect(
+      storage.ownsUrl(
+        'https://otherstore.public.blob.vercel-storage.com/releases/v1.jpg',
+      ),
+    ).toBe(false);
+  });
+
+  it('ownsUrl: rejects malformed URLs and non-URLs', () => {
+    const storage = new VercelBlobStorage(
+      { storeId: STORE_ID },
+      { BLOB_READ_WRITE_TOKEN: TOKEN },
+    );
+    expect(storage.ownsUrl('not-a-url')).toBe(false);
+    expect(storage.ownsUrl('')).toBe(false);
   });
 
   it('urlFor produces the deterministic public URL', () => {
