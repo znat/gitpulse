@@ -379,141 +379,188 @@ The CLI takes env vars, writes JSON, builds a static site. Wire it into whatever
 
 Configuration is split by concern:
 
-- **Secrets and operational settings** — environment variables (never committed).
-- **Publication settings** — `.gitpulse.json` at the root of your repo (safe to commit).
+- **Settings** — `.gitpulse.json` at the root of your repo (safe to commit). Everything that isn't a secret lives here: the text model, analysis scope, theme, images, and deploy coordinates.
+- **Secrets** — environment variables (never committed): API keys, tokens, the optional site password.
 
 ### `.gitpulse.json`
 
-Optional file at your repo root. All fields are optional; omit any you don't need.
+Optional file at your repo root. Every field is optional; omit any you don't need. Unknown keys are rejected (typos surface loudly).
 
 ```json
 {
   "publicationTitle": "The Acme Dispatch",
-  "publicationSubtitle": "Engineering updates from the Acme team"
+  "publicationSubtitle": "Engineering updates from the Acme team",
+  "text": {
+    "provider": "openai-compatible",
+    "model": "MiniMax-M3",
+    "baseURL": "https://api.minimax.io/v1"
+  },
+  "analysis": {
+    "bootstrapDays": 30,
+    "concurrency": 10,
+    "releasesCap": 20,
+    "includePrereleases": true
+  },
+  "images": {
+    "storage": { "provider": "vercel-blob" },
+    "ai": { "provider": "gemini", "model": "gemini-3.1-flash-image-preview" }
+  }
 }
 ```
+
+**Top-level**
 
 | Field | Default | Purpose |
 |---|---|---|
 | `publicationTitle` | `The <Repo> Conversation` | Name shown in the feed header, top bar, and page title. |
 | `publicationSubtitle` | `<owner>/<repo> · Development Activity Intelligence` | Subtitle shown below the feed header. |
+| `daysPerPage` | (unset) | Days of stories per feed page. |
+| `releasesPerPage` | (unset) | Releases per release-index page. |
+| `theme` | (unset) | `{ accentColor, linkColor }` — hex colors like `#b8860b`. |
+| `labels` | (unset) | `{ ignore }` — PRs carrying this label are excluded (and retroactively pruned). |
+
+**`text`** — the LLM used for story and release prose. API keys are **never** put here; see [LLM providers](#llm-providers). Discriminated on `provider`:
+
+| `provider` | Fields | SDK / key |
+|---|---|---|
+| `openai` (default) | `model`, `temperature?` | OpenAI · `OPENAI_API_KEY` |
+| `anthropic` | `model`, `temperature?` | Anthropic · `ANTHROPIC_API_KEY` |
+| `openai-compatible` | `model`, **`baseURL`**, `temperature?` | OpenAI-wire (MiniMax, OpenRouter, DeepSeek…) · `OPENAI_API_KEY` |
+
+When `text` is omitted, gitpulse defaults to `openai` / `gpt-4o-mini`.
+
+**`analysis`** — scope and pacing.
+
+| Field | Default | Purpose |
+|---|---|---|
+| `branch` | repo default | Branch to analyze. |
 | `bootstrapDays` | `30` | First-run history window in days. |
 | `concurrency` | `10` | Parallel commit analysis. Bound by your provider's rate limits. |
+| `limit` | (unbounded) | Cap on commits processed per run (debugging). |
 | `releasesCap` | `20` | Max releases to process per run. `0` disables the releases pass. |
 | `includePrereleases` | `true` | Include prereleases in the feed. |
 
-### Required env vars (when not auto-detected)
+**`site` / `paths`** — deploy coordinates and on-disk locations. These are deploy-environment-specific, so the matching `GITPULSE_*` env var (below) overrides the file when set.
+
+| Field | Env override | Default |
+|---|---|---|
+| `site.url` | `GITPULSE_SITE_URL` | auto-detected (Vercel/Netlify/CF Pages) → `https://<owner>.github.io/<repo>/` |
+| `site.basePath` | `GITPULSE_BASE_PATH` | `auto` (`/<repo>` from `GITHUB_REPOSITORY`) |
+| `site.repo` | `GITPULSE_SITE_REPO` | `znat/gitpulse` |
+| `site.ref` | `GITPULSE_SITE_REF` | `v<cli-version>` |
+| `paths.dataDir` | `GITPULSE_DATA_DIR` | `./.gitpulse/data` |
+| `paths.storiesDir` | `GITPULSE_STORIES_DIR` | `<dataDir>/stories` |
+| `paths.releasesDir` | `GITPULSE_RELEASES_DIR` | `<dataDir>/releases` |
+| `paths.outDir` | `GITPULSE_OUT_DIR` | `./.gitpulse/out` |
+
+### Secrets (env vars — never committed)
 
 | Var | What it is |
 |---|---|
-| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Your LLM provider's API key. Use the name matching `AI_PROTOCOL`: `OPENAI_API_KEY` for `openai` (the default, also used for OpenAI-compatible providers via `AI_BASE_URL` — MiniMax, OpenRouter, etc.), `ANTHROPIC_API_KEY` for `anthropic`. |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Your text-LLM key. Use the name matching `.gitpulse.json` `text.provider`: `OPENAI_API_KEY` for `openai` and `openai-compatible` (MiniMax, OpenRouter, etc.); `ANTHROPIC_API_KEY` for `anthropic`. |
+| `GITHUB_TOKEN` | Enables PR / release context lookups via GraphQL. Without it, every commit is treated as a direct push. |
+| `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Required only when `images.ai` is configured (image generation). |
+| `BLOB_READ_WRITE_TOKEN` | Required when `images.storage.provider` is `vercel-blob` (image hosting). Must be set alongside the image-model key — set only one and the pipeline trips. |
+| `GITPULSE_PASSWORD` | If set, the published site is encrypted end-to-end and visitors must enter the password to read. See [Password protection](#password-protection). |
 
-### Common optional env vars
+### Deploy-environment env vars (auto-detected, or override settings)
 
 | Var | Default | Purpose |
 |---|---|---|
 | `GITHUB_REPOSITORY` | auto-detected | `<owner>/<repo>`. Auto-set in GitHub Actions; auto-detected on Vercel and Netlify. Set manually on Cloudflare Pages and other targets. |
-| `GITHUB_TOKEN` | (none) | Enables PR / release context lookups via GraphQL. Without it, every commit is treated as a direct push. |
-| `AI_MODEL` | `gpt-4o-mini` | Model id used for story generation. |
-| `AI_PROTOCOL` | `openai` | `openai` or `anthropic`. |
-| `AI_BASE_URL` | (default OpenAI) | For OpenAI-compatible providers. See [LLM providers](#llm-providers). |
-| `AI_TEMPERATURE` | `0` | Sampling temperature. |
-| `GITPULSE_BASE_PATH` | `auto` | `auto` = derive `/<repo>` from `GITHUB_REPOSITORY` (project Pages). `none` = root deployment (Vercel, user/org Pages, custom domain). Or a literal prefix like `/blog`. |
-| `GITPULSE_SITE_URL` | auto-detected | Absolute URL of the deployed site (used for canonical URLs and incremental state restore). Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. Set explicitly to override for custom domains. |
-| `GITPULSE_DATA_DIR` | `./.gitpulse/data` | Where `analyze` writes JSON. `build` reads from here. |
-| `GITPULSE_OUT_DIR` | `./.gitpulse/out` | Where `build` writes the static site. |
-| `GITPULSE_PASSWORD` | (none) | If set, the published site is encrypted end-to-end and visitors must enter the password to read. See [Password protection](#password-protection). |
+| `GITPULSE_SITE_URL` | auto-detected | Overrides `site.url`. Auto-detected on Vercel (`VERCEL_PROJECT_PRODUCTION_URL` / `VERCEL_URL`), Netlify (`URL` / `DEPLOY_PRIME_URL` / `DEPLOY_URL`), Cloudflare Pages (`CF_PAGES_URL`); falls back to `https://<owner>.github.io/<repo>/`. |
+| `GITPULSE_BASE_PATH` | `auto` | Overrides `site.basePath`. `auto` = `/<repo>` from `GITHUB_REPOSITORY` (project Pages). `none` = root deployment (Vercel, user/org Pages, custom domain). Or a literal prefix like `/blog`. |
+| `GITPULSE_DATA_DIR` / `GITPULSE_OUT_DIR` / `GITPULSE_SITE_REPO` / `GITPULSE_SITE_REF` | (settings) | Override the matching `paths.*` / `site.*` settings. |
+
+> Text model and analysis scope are **not** env-configurable — they live in `.gitpulse.json`. (Before 1.0 these were the `AI_*` and some `GITPULSE_*` env vars; they were removed in favor of the file.)
 
 ### LLM providers
 
-The CLI reads provider config from environment variables. Pick the key name to match your `AI_PROTOCOL`: `OPENAI_API_KEY` for `openai` (covers OpenAI itself plus OpenAI-compatible providers routed via `AI_BASE_URL` — MiniMax, OpenRouter, etc.), `ANTHROPIC_API_KEY` for `anthropic`.
+Pick a provider in `.gitpulse.json` `text`, then supply the matching key as a secret env var: `OPENAI_API_KEY` for `openai` / `openai-compatible` (MiniMax, OpenRouter, etc.), `ANTHROPIC_API_KEY` for `anthropic`.
 
-**Where to wire them, by deploy target:**
+**Where to wire the key, by deploy target:**
 
-For the **Pages reusable workflow**, non-secret values go through `with:`; the secret rides on `secrets: inherit`:
+For the **Pages reusable workflow**, the key rides on `secrets: inherit`; the model is in your committed `.gitpulse.json`:
 
 ```yaml
 jobs:
   publish:
     uses: znat/gitpulse/.github/workflows/publish-pages.yaml@v0
-    with:
-      ai-protocol: openai            # or "anthropic"
-      ai-base-url: ""                # see provider-specific values below
-      ai-model: gpt-4o-mini
     secrets: inherit                 # supplies OPENAI_API_KEY or ANTHROPIC_API_KEY repo secret
 ```
 
-For **Vercel / Netlify / Cloudflare Pages**, set the same names as project Environment Variables in the dashboard. See the Quickstart section for each.
+For **Vercel / Netlify / Cloudflare Pages**, set the key as a project Environment Variable in the dashboard. See the Quickstart section for each.
 
 For a **generic GitHub Actions step** (your own workflow, not the reusable one):
 
 ```yaml
 - run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
   env:
-    AI_MODEL:       <model id>
-    AI_PROTOCOL:    openai           # or "anthropic"
-    AI_BASE_URL:    <provider base url>
-    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}   # or ANTHROPIC_API_KEY
     GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
 ```
 
-For **local CLI use**, in a `.env` next to the invocation:
+For **local CLI use**, put the key in a `.env` next to the invocation:
 
 ```bash
-AI_MODEL=<model id>
-AI_PROTOCOL=openai
-AI_BASE_URL=<provider base url>
-OPENAI_API_KEY=<your provider key>
+OPENAI_API_KEY=<your provider key>                  # or ANTHROPIC_API_KEY
 ```
 
-**Provider-specific values:**
+**Provider-specific `.gitpulse.json` `text` blocks:**
 
 <details>
 <summary><b>OpenAI</b> (default)</summary>
 
-```bash
-AI_MODEL=gpt-4o-mini
-OPENAI_API_KEY=<your openai key>
+```json
+{ "text": { "provider": "openai", "model": "gpt-4o-mini" } }
 ```
 
-`AI_PROTOCOL` and `AI_BASE_URL` aren't needed — they default to OpenAI.
+Secret: `OPENAI_API_KEY`. Omitting `text` entirely also defaults to this.
 
 </details>
 
 <details>
 <summary><b>MiniMax</b> (cheap, OpenAI-compatible)</summary>
 
-```bash
-AI_PROTOCOL=openai
-AI_BASE_URL=https://api.minimax.io/v1
-AI_MODEL=MiniMax-M2.7
-OPENAI_API_KEY=<your minimax key>
+```json
+{
+  "text": {
+    "provider": "openai-compatible",
+    "model": "MiniMax-M3",
+    "baseURL": "https://api.minimax.io/v1"
+  }
+}
 ```
+
+Secret: `OPENAI_API_KEY` (your MiniMax key).
 
 </details>
 
 <details>
 <summary><b>OpenRouter</b> (any model they expose)</summary>
 
-```bash
-AI_PROTOCOL=openai
-AI_BASE_URL=https://openrouter.ai/api/v1
-AI_MODEL=anthropic/claude-sonnet-4-6
-OPENAI_API_KEY=<your openrouter key>
+```json
+{
+  "text": {
+    "provider": "openai-compatible",
+    "model": "anthropic/claude-sonnet-4-6",
+    "baseURL": "https://openrouter.ai/api/v1"
+  }
+}
 ```
+
+Secret: `OPENAI_API_KEY` (your OpenRouter key).
 
 </details>
 
 <details>
 <summary><b>Anthropic Claude</b> (native)</summary>
 
-```bash
-AI_PROTOCOL=anthropic
-AI_MODEL=claude-sonnet-4-6
-ANTHROPIC_API_KEY=<your anthropic key>
+```json
+{ "text": { "provider": "anthropic", "model": "claude-sonnet-4-6" } }
 ```
 
-`AI_BASE_URL` isn't needed — uses Anthropic's default endpoint.
+Secret: `ANTHROPIC_API_KEY`. No `baseURL` needed — uses Anthropic's default endpoint.
 
 </details>
 

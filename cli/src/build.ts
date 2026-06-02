@@ -12,8 +12,10 @@ import {
   rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadProjectConfig } from './project-config.ts';
+import { resolveBasePath, resolvePath, resolveRepoDir } from './config.ts';
 
 interface BuildConfig {
   dataDir: string;
@@ -30,19 +32,29 @@ function readCliVersion(): string {
   return pkg.version;
 }
 
-function loadBuildConfig(env = process.env): BuildConfig {
-  const cwd = process.cwd();
+export function loadBuildConfig(env = process.env): BuildConfig {
   const cliVersion = readCliVersion();
+  // Resolve the repo root exactly as `gitpulse analyze` does (shared helper,
+  // incl. the GITHUB_WORKSPACE fallback) so the two commands agree on where
+  // .gitpulse.json — and therefore relative paths/dataDir — live. Then resolve
+  // env override → file → default against repoDir, matching config.ts's
+  // dataDir, so the analyze→build handoff never targets different roots.
+  const repoDir = resolveRepoDir(env);
+  const cfg = loadProjectConfig(repoDir);
   return {
-    dataDir: env.GITPULSE_DATA_DIR
-      ? resolve(env.GITPULSE_DATA_DIR)
-      : join(cwd, '.gitpulse', 'data'),
-    outDir: env.GITPULSE_OUT_DIR
-      ? resolve(env.GITPULSE_OUT_DIR)
-      : join(cwd, '.gitpulse', 'out'),
-    siteRepo: env.GITPULSE_SITE_REPO ?? 'znat/gitpulse',
-    siteRef: env.GITPULSE_SITE_REF ?? `v${cliVersion}`,
-    basePath: env.GITPULSE_BASE_PATH,
+    dataDir: resolvePath(
+      env.GITPULSE_DATA_DIR ?? cfg.paths?.dataDir,
+      repoDir,
+      join(repoDir, '.gitpulse', 'data'),
+    ),
+    outDir: resolvePath(
+      env.GITPULSE_OUT_DIR ?? cfg.paths?.outDir,
+      repoDir,
+      join(repoDir, '.gitpulse', 'out'),
+    ),
+    siteRepo: env.GITPULSE_SITE_REPO ?? cfg.site?.repo ?? 'znat/gitpulse',
+    siteRef: env.GITPULSE_SITE_REF ?? cfg.site?.ref ?? `v${cliVersion}`,
+    basePath: resolveBasePath(env, cfg),
   };
 }
 

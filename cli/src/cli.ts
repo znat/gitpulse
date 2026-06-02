@@ -36,32 +36,32 @@ Commands:
   --version                   Print the CLI version.
   --help                      Show this help.
 
-Configuration is via environment variables (no flags). Required:
-  OPENAI_API_KEY            API key for the AI provider configured below.
-  GITHUB_REPOSITORY         <owner>/<repo>. Auto-set in GitHub Actions.
+Configuration is split: settings live in .gitpulse.json (committed),
+secrets live in environment variables.
 
-Common analyze env vars (all optional):
+Secrets (env, never committed):
+  OPENAI_API_KEY / ANTHROPIC_API_KEY   Text-LLM key, matching text.provider.
   GITHUB_TOKEN              Enables PR / release context lookups via GraphQL.
-  AI_MODEL                  Default: gpt-4o-mini.
-  AI_PROTOCOL               openai | anthropic. Default: openai.
-  AI_BASE_URL               Custom OpenAI/Anthropic-compatible endpoint.
-  AI_TEMPERATURE            Default: 0.
-  GITPULSE_DATA_DIR         Where to write story JSON. Default: \${PWD}/.gitpulse/data.
-  GITPULSE_BOOTSTRAP_DAYS   First-run history window. Default: 30.
-  GITPULSE_CONCURRENCY      Default: 10.
-  GITPULSE_RELEASES_CAP     Default: 20. Set to 0 to skip releases.
-  GITPULSE_INCLUDE_PRERELEASES  Default: true.
-  GITPULSE_SITE_URL         Where the deployed site lives (for state restore).
-                            Auto-detected on Vercel, Netlify, Cloudflare Pages.
-                            Falls back to https://<owner>.github.io/<repo>/.
+  GOOGLE_API_KEY / GEMINI_API_KEY      Image generation (when images.ai set).
+  GITPULSE_PASSWORD         Encrypts the published site, if set.
 
-Common build env vars (all optional):
-  GITPULSE_DATA_DIR         Source of analyzer JSON.    Default: \${PWD}/.gitpulse/data.
-  GITPULSE_OUT_DIR          Where to write the built site. Default: \${PWD}/.gitpulse/out.
-  GITPULSE_SITE_REPO        Override fork.              Default: znat/gitpulse.
-  GITPULSE_SITE_REF         Override version.           Default: v<this-cli-version>.
-  GITPULSE_BASE_PATH        Override Pages basePath ("none" for Vercel/Netlify).
-                            Default: derived from GITHUB_REPOSITORY.
+Settings (.gitpulse.json at the repo root, all optional):
+  text                      { provider: openai | anthropic | openai-compatible,
+                              model, baseURL (compatible only), temperature }.
+                              Default: openai / gpt-4o-mini.
+  analysis                  { branch, bootstrapDays (30), concurrency (10),
+                              limit, releasesCap (20), includePrereleases (true) }.
+  site                      { url, basePath, repo, ref } — deploy coordinates.
+  paths                     { dataDir, storiesDir, releasesDir, outDir }.
+  images, theme, labels     See the README.
+
+Auto-detected / env-overridable (deploy-environment-specific):
+  GITHUB_REPOSITORY         <owner>/<repo>. Auto-set in GitHub Actions.
+  GITPULSE_SITE_URL         Overrides site.url. Auto-detected on Vercel/Netlify/
+                            Cloudflare Pages; else https://<owner>.github.io/<repo>/.
+  GITPULSE_BASE_PATH        Overrides site.basePath ("none" for Vercel/Netlify).
+  GITPULSE_DATA_DIR / GITPULSE_OUT_DIR / GITPULSE_SITE_REPO / GITPULSE_SITE_REF
+                            Override the matching paths.* / site.* settings.
 
 See https://github.com/znat/gitpulse for full docs.`,
   );

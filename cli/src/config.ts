@@ -1,4 +1,4 @@
-import { dirname } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { loadProjectConfig, type ProjectConfig } from './project-config.ts';
 import { findUp } from './find-up.ts';
 import { DEFAULT_LABELS } from './labels.ts';
@@ -64,41 +64,47 @@ export function loadConfig(env = process.env): RuntimeConfig {
         'Netlify: REPOSITORY_URL).',
     );
   }
-  const protocol = validateProtocol(env.AI_PROTOCOL);
-  const apiKey = resolveTextApiKey(env, protocol);
   const repoDir = resolveRepoDir(env);
-  // Match build.ts default so the zero-config consumer flow
-  // (analyze → build) wires together without GITPULSE_DATA_DIR.
-  // self-deploy.yml overrides this explicitly to site/public/data.
-  const dataDir = env.GITPULSE_DATA_DIR ?? `${repoDir}/.gitpulse/data`;
   const projectConfig = loadProjectConfig(repoDir);
+  const analysis = projectConfig.analysis;
+
+  // Locations are deploy-environment-specific, so env override wins over
+  // the committed file. Match build.ts defaults so the zero-config flow
+  // (analyze → build) wires together; self-deploy.yml overrides DATA_DIR.
+  const dataDir = resolvePath(
+    env.GITPULSE_DATA_DIR ?? projectConfig.paths?.dataDir,
+    repoDir,
+    `${repoDir}/.gitpulse/data`,
+  );
 
   return {
     repoDir,
     repoFullName,
     dataDir,
-    storiesDir: env.GITPULSE_STORIES_DIR ?? `${dataDir}/stories`,
-    releasesDir: env.GITPULSE_RELEASES_DIR ?? `${dataDir}/releases`,
-    branch: env.GITPULSE_BRANCH || undefined,
-    bootstrapDays: projectConfig.bootstrapDays ?? 30,
-    limit: env.GITPULSE_LIMIT ? Number(env.GITPULSE_LIMIT) : undefined,
-    concurrency: Math.max(1, projectConfig.concurrency ?? 10),
+    storiesDir: resolvePath(
+      env.GITPULSE_STORIES_DIR ?? projectConfig.paths?.storiesDir,
+      repoDir,
+      `${dataDir}/stories`,
+    ),
+    releasesDir: resolvePath(
+      env.GITPULSE_RELEASES_DIR ?? projectConfig.paths?.releasesDir,
+      repoDir,
+      `${dataDir}/releases`,
+    ),
+    branch: analysis?.branch || undefined,
+    bootstrapDays: analysis?.bootstrapDays ?? 30,
+    limit: analysis?.limit,
+    concurrency: Math.max(1, analysis?.concurrency ?? 10),
     githubToken: env.GITHUB_TOKEN || undefined,
-    siteUrl: resolveSiteUrl(env, repoFullName),
-    releasesCap: Math.max(0, projectConfig.releasesCap ?? 20),
-    includePrereleases: projectConfig.includePrereleases ?? true,
+    siteUrl: resolveSiteUrl(env, projectConfig, repoFullName),
+    releasesCap: Math.max(0, analysis?.releasesCap ?? 20),
+    includePrereleases: analysis?.includePrereleases ?? true,
     publicationTitle: projectConfig.publicationTitle,
     publicationSubtitle: projectConfig.publicationSubtitle,
     daysPerPage: projectConfig.daysPerPage,
     releasesPerPage: projectConfig.releasesPerPage,
     theme: projectConfig.theme,
-    ai: {
-      apiKey,
-      model: env.AI_MODEL ?? 'gpt-4o-mini',
-      protocol,
-      baseURL: env.AI_BASE_URL || undefined,
-      temperature: Number(env.AI_TEMPERATURE ?? 0),
-    },
+    ai: resolveTextAi(projectConfig, env),
     imageAi: resolveImageAi(projectConfig, env),
     images: projectConfig.images,
     labels: {
@@ -107,11 +113,50 @@ export function loadConfig(env = process.env): RuntimeConfig {
   };
 }
 
+// Resolve an optional configured path against the repo root. Absolute paths
+// pass through; relative paths (from .gitpulse.json) are joined to repoDir so
+// the same config works regardless of the CLI's cwd. Falls back to `def`.
+// Exported so build.ts resolves paths identically to analyze.
+export function resolvePath(
+  value: string | undefined,
+  repoDir: string,
+  def: string,
+): string {
+  if (!value) return def;
+  return isAbsolute(value) ? value : join(repoDir, value);
+}
+
+// Derive the text-LLM runtime config from .gitpulse.json `text`. The wire
+// protocol follows the provider (anthropic → Anthropic SDK, everything else →
+// OpenAI SDK); baseURL is only set for the 'openai-compatible' provider. When
+// `text` is omitted we default to OpenAI gpt-4o-mini. API keys are env-only.
+function resolveTextAi(
+  projectConfig: ProjectConfig,
+  env: NodeJS.ProcessEnv,
+): RuntimeConfig['ai'] {
+  const text = projectConfig.text;
+  const protocol: 'openai' | 'anthropic' =
+    text?.provider === 'anthropic' ? 'anthropic' : 'openai';
+  const apiKey = resolveTextApiKey(env, protocol);
+  return {
+    apiKey,
+    model: text?.model ?? 'gpt-4o-mini',
+    protocol,
+    baseURL: text?.provider === 'openai-compatible' ? text.baseURL : undefined,
+    temperature: text?.temperature ?? 0,
+  };
+}
+
 // Determine which directory to treat as the repo root. Explicit env vars
 // win unchanged. When neither is set, walk up from cwd to find
 // `.gitpulse.json` so the CLI does the right thing when invoked from
 // `cli/` or any other subdirectory of the project.
-function resolveRepoDir(env: NodeJS.ProcessEnv): string {
+//
+// Exported so `gitpulse build` (build.ts) resolves the repo root — and
+// therefore relative path/dataDir config — exactly the same way as
+// `gitpulse analyze`, including the GITHUB_WORKSPACE fallback. Divergence
+// here would let the two commands read/write different `.gitpulse/data`.
+export function resolveRepoDir(env: NodeJS.ProcessEnv): string {
   const explicit = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE;
   if (explicit) return explicit;
   const configPath = findUp('.gitpulse.json', process.cwd());
@@ -135,48 +180,55 @@ function resolveImageAi(
   return undefined;
 }
 
-// Resolve the site URL with priority:
+// Resolve the site URL with priority (locations are deploy-specific, so the
+// env override outranks the committed file):
 // 1. Explicit GITPULSE_SITE_URL (normalized)
-// 2. Auto-detected deployed URL (normalized)
-// 3. GitHub Pages fallback (only if GITPULSE_BASE_PATH is default or 'auto')
-// Throws if GITPULSE_BASE_PATH is set to non-default and no explicit GITPULSE_SITE_URL.
-function resolveSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
-  const basePath = env.GITPULSE_BASE_PATH;
+// 2. .gitpulse.json `site.url` (normalized)
+// 3. Auto-detected deployed URL (normalized)
+// 4. GitHub Pages fallback (only if basePath is default or 'auto')
+// Throws if basePath is non-default and no explicit site URL is provided.
+function resolveSiteUrl(
+  env: NodeJS.ProcessEnv,
+  projectConfig: ProjectConfig,
+  repoFullName: string,
+): string {
+  const basePath = resolveBasePath(env, projectConfig);
 
-  // 1. First, check for explicit GITPULSE_SITE_URL
-  const explicitUrl = normalizeSiteUrl(env.GITPULSE_SITE_URL);
+  // 1./2. Explicit site URL — env override, then the committed file.
+  const explicitUrl =
+    normalizeSiteUrl(env.GITPULSE_SITE_URL) ??
+    normalizeSiteUrl(projectConfig.site?.url);
   if (explicitUrl) {
     return explicitUrl;
   }
 
-  // 2. Then try auto-detected deployed URL
+  // 3. Then try auto-detected deployed URL
   const detected = detectDeployedUrl(env);
   if (detected) {
     return detected.endsWith('/') ? detected : `${detected}/`;
   }
 
-  // 3. If GITPULSE_BASE_PATH is set and not 'auto', require explicit GITPULSE_SITE_URL
+  // 4. If basePath is set and not 'auto', require an explicit site URL
   if (basePath && basePath !== 'auto') {
     throw new Error(
-      'GITPULSE_BASE_PATH is set to a non-default value, but GITPULSE_SITE_URL is not set. ' +
-        'When using a custom base path, you must explicitly set GITPULSE_SITE_URL.',
+      'A non-default basePath is set (site.basePath / GITPULSE_BASE_PATH), but no ' +
+        'site URL is configured. When using a custom base path, set site.url in ' +
+        '.gitpulse.json (or GITPULSE_SITE_URL).',
     );
   }
 
-  // 4. Fallback to GitHub Pages
+  // 5. Fallback to GitHub Pages
   const [owner, repo] = repoFullName.split('/');
   return `https://${owner}.github.io/${repo}/`;
 }
 
-// Auto-detect the deployed site URL from common platform env vars.
-// Priority: Vercel → Netlify → Cloudflare Pages → GH Pages fallback.
-// Always returns a URL ending in '/' so the analyzer can append paths
-// directly (data/manifest.json, etc.).
-function autoSiteUrl(env: NodeJS.ProcessEnv, repoFullName: string): string {
-  const detected = detectDeployedUrl(env);
-  if (detected) return detected.endsWith('/') ? detected : `${detected}/`;
-  const [owner, repo] = repoFullName.split('/');
-  return `https://${owner}.github.io/${repo}/`;
+// basePath with env override winning over the committed file. Used both for
+// the site-url consistency check here and (independently) by build.ts.
+export function resolveBasePath(
+  env: NodeJS.ProcessEnv,
+  projectConfig: ProjectConfig,
+): string | undefined {
+  return env.GITPULSE_BASE_PATH ?? projectConfig.site?.basePath;
 }
 
 function normalizeSiteUrl(raw: string | undefined): string | undefined {
@@ -219,29 +271,20 @@ function detectDeployedUrl(env: NodeJS.ProcessEnv): string | undefined {
   return undefined;
 }
 
-// Validate AI_PROTOCOL is one of the allowed values.
-// Returns 'openai' as the default when not set.
-function validateProtocol(value: string | undefined): 'openai' | 'anthropic' {
-  const allowedProtocols = ['openai', 'anthropic'] as const;
-  if (!value) return 'openai';
-  if (allowedProtocols.includes(value as any)) {
-    return value as 'openai' | 'anthropic';
-  }
-  throw new Error(
-    `Invalid AI_PROTOCOL: "${value}". Must be one of: ${allowedProtocols.join(', ')}`,
-  );
-}
-
-// Pick the text-gen API key based on the configured protocol. The env var
-// name must match the provider: ANTHROPIC_API_KEY for anthropic,
-// OPENAI_API_KEY for openai (also covers OpenAI-compatible providers routed
-// via AI_BASE_URL — MiniMax, OpenRouter, etc.).
+// Pick the text-gen API key based on the derived protocol. The env var name
+// must match the provider: ANTHROPIC_API_KEY for anthropic, OPENAI_API_KEY
+// for openai (also covers OpenAI-compatible providers — MiniMax, OpenRouter,
+// etc. — configured via text.provider="openai-compatible").
 function resolveTextApiKey(
   env: NodeJS.ProcessEnv,
   protocol: 'openai' | 'anthropic',
 ): string {
   const name = protocol === 'anthropic' ? 'ANTHROPIC_API_KEY' : 'OPENAI_API_KEY';
   const v = env[name];
-  if (!v) throw new Error(`Missing required env var: ${name} (AI_PROTOCOL=${protocol})`);
+  if (!v) {
+    throw new Error(
+      `Missing required env var: ${name} (text provider resolves to protocol=${protocol})`,
+    );
+  }
   return v;
 }
