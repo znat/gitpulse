@@ -33,7 +33,11 @@ export async function generateImage(
       contents: prompt,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
-        imageConfig: { aspectRatio: '3:2', imageSize: '2K' },
+        // 1K (~1024px) covers our largest render — the feed hero at 720px CSS
+        // (~1440px on a 2x display) and the ~480px side panel. 2K (~2048px) is
+        // bigger than anything we show and costs ~50% more per image
+        // ($0.101 vs $0.067), so it's wasted resolution + heavier Blob uploads.
+        imageConfig: { aspectRatio: '3:2', imageSize: '1K' },
       },
     }),
     GEMINI_TIMEOUT_MS,

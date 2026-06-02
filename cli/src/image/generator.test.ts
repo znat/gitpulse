@@ -59,7 +59,7 @@ describe('generateImage (gemini)', () => {
       contents: 'the prompt',
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
-        imageConfig: { aspectRatio: '3:2', imageSize: '2K' },
+        imageConfig: { aspectRatio: '3:2', imageSize: '1K' },
       },
     });
   });
