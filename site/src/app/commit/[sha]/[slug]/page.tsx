@@ -101,6 +101,7 @@ export default async function CommitStoryPage({
               fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 672px"
+              priority
               unoptimized
             />
           </div>

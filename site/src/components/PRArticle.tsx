@@ -54,6 +54,9 @@ export function PRArticle({
             fill
             className="object-cover"
             sizes={variant === 'panel' ? '(max-width: 768px) 100vw, 480px' : '(max-width: 768px) 100vw, 720px'}
+            // The full-page illustration is above the fold (likely LCP) — eager-load
+            // + preload it. The panel can open below the fold, so leave it lazy.
+            priority={variant === 'page'}
             unoptimized
           />
         </div>
