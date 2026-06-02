@@ -39,7 +39,6 @@ export async function generateFeatureImage(
   const image = await generateImage(input.imageAi, prompt);
   const ext = extensionFromMimeType(image.mimeType);
   const key = `stories/${input.storyId}.${ext}`;
-  await input.storage.upload(key, image.buffer, image.mimeType);
-  return input.storage.urlFor(key);
+  return await input.storage.upload(key, image.buffer, image.mimeType);
 }
 

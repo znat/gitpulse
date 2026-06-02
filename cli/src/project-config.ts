@@ -21,7 +21,11 @@ const ThemeSchema = z.strictObject({
 const StorageProviderSchema = z.discriminatedUnion('provider', [
   z.strictObject({
     provider: z.literal('vercel-blob'),
-    storeId: z.string().min(1),
+    // Optional. When set, asserted against the storeId encoded in
+    // BLOB_READ_WRITE_TOKEN at startup; mismatches throw with a clear
+    // message. The actual upload destination is always the token's
+    // store, so leaving this out is fine — and recommended.
+    storeId: z.string().min(1).optional(),
   }),
   z.strictObject({
     provider: z.literal('r2'),

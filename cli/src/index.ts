@@ -407,6 +407,15 @@ async function processOneRelease(opts: {
     }
   }
 
+  // Backfill: if the existing imageUrl points at a different storage
+  // backend (e.g. config/token drift wrote URLs into a store we no longer
+  // use), treat it as missing so the image regenerates with a URL that
+  // actually resolves. `ownsUrl` matches by storeId, not full host, so
+  // future URL-format changes don't trigger false-positive regens.
+  if (existingImageUrl && imageGen && !imageGen.storage.ownsUrl(existingImageUrl)) {
+    existingImageUrl = undefined;
+  }
+
   // Generate quip + releaseStory via LLM. On failure, use the fallback so
   // the file still gets written (the analyzer doesn't bail on one release).
   if (!skipLLM) {
