@@ -60,9 +60,7 @@ jobs:
       - name: Analyze (gitpulse analyze)
         run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
         env:
-          AI_PROTOCOL: openai
-          AI_BASE_URL: https://api.minimax.io/v1
-          AI_MODEL: MiniMax-M2.7
+          # Text model (MiniMax) is configured in .gitpulse.json → `text`.
           # Hardcoded production URL (repo variable). Vercel's prod alias
           # is stable per project — no need to query the API on every run.
           GITPULSE_SITE_URL: ${{ vars.VERCEL_SITE_URL }}

@@ -59,9 +59,7 @@ jobs:
       - name: Analyze (in-repo CLI)
         run: node cli/dist/cli.js analyze
         env:
-          AI_PROTOCOL: openai
-          AI_BASE_URL: https://api.minimax.io/v1
-          AI_MODEL: MiniMax-M2.7
+          # Text model (MiniMax) is configured in .gitpulse.json → `text`.
           # Restore analyzer state from prod so PR runs are incremental,
           # not a full re-analysis. Canonical meta will point to prod —
           # acceptable for ephemeral previews.

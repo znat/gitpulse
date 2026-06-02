@@ -23,39 +23,11 @@ name: Gitpulse Publish (Pages)
 
 on:
   workflow_call:
+    # Text model and analysis scope (provider/model, bootstrapDays, concurrency,
+    # releasesCap, includePrereleases…) are configured in `.gitpulse.json` at the
+    # consumer repo root — not as workflow inputs. Only deploy-environment-specific
+    # values (base-path, site-url) and secrets are passed here.
     inputs:
-      ai-model:
-        description: "Model id used for story generation."
-        type: string
-        default: gpt-4o-mini
-      ai-protocol:
-        description: "openai | anthropic. Use 'anthropic' for Claude or for MiniMax via its Anthropic-compatible endpoint."
-        type: string
-        default: openai
-      ai-base-url:
-        description: "Base URL for the chat-completions endpoint. Empty = OpenAI."
-        type: string
-        default: ""
-      ai-temperature:
-        description: "Sampling temperature for the LLM."
-        type: number
-        default: 0
-      bootstrap-days:
-        description: "On first run, how far back to look for PRs/commits."
-        type: number
-        default: 30
-      concurrency:
-        description: "How many commits to analyze in parallel."
-        type: number
-        default: 10
-      releases-cap:
-        description: "Max number of recent releases to process per run. 0 disables releases."
-        type: number
-        default: 20
-      include-prereleases:
-        description: "Include pre-releases (with a Pre-release badge)."
-        type: boolean
-        default: true
       base-path:
         description: 'basePath override for static export. "auto" (default) = /<repo> derived from GITHUB_REPOSITORY (project Pages — the common case). "none" = root deployment (user/org Pages, custom domain). Or a literal prefix like "/blog".'
         type: string
@@ -67,12 +39,12 @@ on:
     secrets:
       OPENAI_API_KEY:
         required: false
-        # Required when ai-protocol=openai (covers OpenAI and any OpenAI-compatible
-        # provider routed via ai-base-url — MiniMax, OpenRouter, etc.).
+        # Required when .gitpulse.json `text.provider` is "openai" or
+        # "openai-compatible" (MiniMax, OpenRouter, etc.).
       ANTHROPIC_API_KEY:
         required: false
-        # Required when ai-protocol=anthropic. Pass via `secrets: inherit` or map
-        # explicitly under `secrets:` in the calling workflow.
+        # Required when .gitpulse.json `text.provider` is "anthropic". Pass via
+        # `secrets: inherit` or map explicitly under `secrets:` in the caller.
 
 permissions:
   contents: read
@@ -104,15 +76,9 @@ jobs:
 
       - name: Analyze (gitpulse analyze)
         run: npm install -g @gitpulse/cli@0 --silent && gitpulse analyze
+        # Text model + analysis scope come from .gitpulse.json. Only the
+        # deploy URL (env override) and secrets are supplied here.
         env:
-          AI_MODEL: ${{ inputs.ai-model }}
-          AI_PROTOCOL: ${{ inputs.ai-protocol }}
-          AI_BASE_URL: ${{ inputs.ai-base-url }}
-          AI_TEMPERATURE: ${{ inputs.ai-temperature }}
-          GITPULSE_BOOTSTRAP_DAYS: ${{ inputs.bootstrap-days }}
-          GITPULSE_CONCURRENCY: ${{ inputs.concurrency }}
-          GITPULSE_RELEASES_CAP: ${{ inputs.releases-cap }}
-          GITPULSE_INCLUDE_PRERELEASES: ${{ inputs.include-prereleases }}
           GITPULSE_SITE_URL: ${{ inputs.site-url }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
