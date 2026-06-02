@@ -460,6 +460,7 @@ When `text` is omitted, gitpulse defaults to `openai` / `gpt-4o-mini`.
 | `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | Your text-LLM key. Use the name matching `.gitpulse.json` `text.provider`: `OPENAI_API_KEY` for `openai` and `openai-compatible` (MiniMax, OpenRouter, etc.); `ANTHROPIC_API_KEY` for `anthropic`. |
 | `GITHUB_TOKEN` | Enables PR / release context lookups via GraphQL. Without it, every commit is treated as a direct push. |
 | `GOOGLE_API_KEY` / `GEMINI_API_KEY` | Required only when `images.ai` is configured (image generation). |
+| `BLOB_READ_WRITE_TOKEN` | Required when `images.storage.provider` is `vercel-blob` (image hosting). Must be set alongside the image-model key — set only one and the pipeline trips. |
 | `GITPULSE_PASSWORD` | If set, the published site is encrypted end-to-end and visitors must enter the password to read. See [Password protection](#password-protection). |
 
 ### Deploy-environment env vars (auto-detected, or override settings)

@@ -12,11 +12,10 @@ import {
   rmSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadProjectConfig } from './project-config.ts';
-import { resolveBasePath } from './config.ts';
-import { findUp } from './find-up.ts';
+import { resolveBasePath, resolvePath, resolveRepoDir } from './config.ts';
 
 interface BuildConfig {
   dataDir: string;
@@ -33,40 +32,30 @@ function readCliVersion(): string {
   return pkg.version;
 }
 
-function loadBuildConfig(env = process.env): BuildConfig {
-  const cwd = process.cwd();
+export function loadBuildConfig(env = process.env): BuildConfig {
   const cliVersion = readCliVersion();
-  // Locate the repo root (where .gitpulse.json lives) so relative paths in
-  // the file resolve the same way regardless of cwd; fall back to cwd.
-  const configPath = env.GITPULSE_REPO_DIR
-    ? join(env.GITPULSE_REPO_DIR, '.gitpulse.json')
-    : findUp('.gitpulse.json', cwd);
-  const repoDir = configPath ? dirname(configPath) : cwd;
+  // Resolve the repo root exactly as `gitpulse analyze` does (shared helper,
+  // incl. the GITHUB_WORKSPACE fallback) so the two commands agree on where
+  // .gitpulse.json — and therefore relative paths/dataDir — live. Then resolve
+  // env override → file → default against repoDir, matching config.ts's
+  // dataDir, so the analyze→build handoff never targets different roots.
+  const repoDir = resolveRepoDir(env);
   const cfg = loadProjectConfig(repoDir);
-
-  // Locations are deploy-environment-specific: env override → file → default.
-  // Env values keep their historical cwd base; file values resolve against
-  // the repo root so the committed config is cwd-independent.
   return {
-    dataDir:
-      pathFrom(env.GITPULSE_DATA_DIR, cwd) ??
-      pathFrom(cfg.paths?.dataDir, repoDir) ??
-      join(cwd, '.gitpulse', 'data'),
-    outDir:
-      pathFrom(env.GITPULSE_OUT_DIR, cwd) ??
-      pathFrom(cfg.paths?.outDir, repoDir) ??
-      join(cwd, '.gitpulse', 'out'),
+    dataDir: resolvePath(
+      env.GITPULSE_DATA_DIR ?? cfg.paths?.dataDir,
+      repoDir,
+      join(repoDir, '.gitpulse', 'data'),
+    ),
+    outDir: resolvePath(
+      env.GITPULSE_OUT_DIR ?? cfg.paths?.outDir,
+      repoDir,
+      join(repoDir, '.gitpulse', 'out'),
+    ),
     siteRepo: env.GITPULSE_SITE_REPO ?? cfg.site?.repo ?? 'znat/gitpulse',
     siteRef: env.GITPULSE_SITE_REF ?? cfg.site?.ref ?? `v${cliVersion}`,
     basePath: resolveBasePath(env, cfg),
   };
-}
-
-// Resolve an optional path against `base` (absolute paths pass through).
-// Returns undefined when no value is set, so callers can chain with `??`.
-function pathFrom(value: string | undefined, base: string): string | undefined {
-  if (!value) return undefined;
-  return isAbsolute(value) ? value : resolve(base, value);
 }
 
 // Reject obviously dangerous values for siteRepo/siteRef before we hand them

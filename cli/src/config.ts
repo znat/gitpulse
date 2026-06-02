@@ -116,7 +116,8 @@ export function loadConfig(env = process.env): RuntimeConfig {
 // Resolve an optional configured path against the repo root. Absolute paths
 // pass through; relative paths (from .gitpulse.json) are joined to repoDir so
 // the same config works regardless of the CLI's cwd. Falls back to `def`.
-function resolvePath(
+// Exported so build.ts resolves paths identically to analyze.
+export function resolvePath(
   value: string | undefined,
   repoDir: string,
   def: string,
@@ -150,7 +151,12 @@ function resolveTextAi(
 // win unchanged. When neither is set, walk up from cwd to find
 // `.gitpulse.json` so the CLI does the right thing when invoked from
 // `cli/` or any other subdirectory of the project.
-function resolveRepoDir(env: NodeJS.ProcessEnv): string {
+//
+// Exported so `gitpulse build` (build.ts) resolves the repo root — and
+// therefore relative path/dataDir config — exactly the same way as
+// `gitpulse analyze`, including the GITHUB_WORKSPACE fallback. Divergence
+// here would let the two commands read/write different `.gitpulse/data`.
+export function resolveRepoDir(env: NodeJS.ProcessEnv): string {
   const explicit = env.GITPULSE_REPO_DIR ?? env.GITHUB_WORKSPACE;
   if (explicit) return explicit;
   const configPath = findUp('.gitpulse.json', process.cwd());

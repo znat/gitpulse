@@ -31,17 +31,17 @@ const StorageProviderSchema = z.discriminatedUnion('provider', [
     provider: z.literal('r2'),
     accountId: z.string().min(1),
     bucket: z.string().min(1),
-    publicBaseUrl: z.string().url(),
+    publicBaseUrl: z.url(),
   }),
   z.strictObject({
     provider: z.literal('s3'),
     region: z.string().min(1),
     bucket: z.string().min(1),
-    publicBaseUrl: z.string().url().optional(),
+    publicBaseUrl: z.url().optional(),
   }),
   z.strictObject({
     provider: z.literal('supabase'),
-    projectUrl: z.string().url(),
+    projectUrl: z.url(),
     bucket: z.string().min(1),
   }),
 ]);
@@ -93,7 +93,7 @@ const TextAISchema = z.discriminatedUnion('provider', [
   z.strictObject({
     provider: z.literal('openai-compatible'),
     model: z.string().min(1),
-    baseURL: z.string().url(),
+    baseURL: z.url(),
     temperature: z.number().min(0).max(2).optional(),
   }),
 ]);
@@ -116,7 +116,7 @@ const AnalysisSchema = z.strictObject({
 // leave it unset and let the platform auto-detect unless you have a custom
 // domain.
 const SiteSchema = z.strictObject({
-  url: z.string().url().optional(),
+  url: z.url().optional(),
   basePath: z.string().optional(),
   repo: z.string().min(1).optional(),
   ref: z.string().min(1).optional(),
