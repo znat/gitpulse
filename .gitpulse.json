@@ -3,7 +3,7 @@
   "publicationSubtitle": "Development activity intelligence for gitpulse itself",
   "text": {
     "provider": "openai-compatible",
-    "model": "MiniMax-M2.7",
+    "model": "MiniMax-M3",
     "baseURL": "https://api.minimax.io/v1"
   },
   "images": {

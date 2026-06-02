@@ -392,7 +392,7 @@ Optional file at your repo root. Every field is optional; omit any you don't nee
   "publicationSubtitle": "Engineering updates from the Acme team",
   "text": {
     "provider": "openai-compatible",
-    "model": "MiniMax-M2.7",
+    "model": "MiniMax-M3",
     "baseURL": "https://api.minimax.io/v1"
   },
   "analysis": {
@@ -525,7 +525,7 @@ Secret: `OPENAI_API_KEY`. Omitting `text` entirely also defaults to this.
 {
   "text": {
     "provider": "openai-compatible",
-    "model": "MiniMax-M2.7",
+    "model": "MiniMax-M3",
     "baseURL": "https://api.minimax.io/v1"
   }
 }
