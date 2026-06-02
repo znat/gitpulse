@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { primaryCategory, categoryDisplayName } from '@/lib/stories';
 import { loadStories, loadStoryBySha } from '@/lib/stories-loader';
 import { buildStoryMetadata, canonicalUrl } from '@/lib/seo';
@@ -88,6 +89,22 @@ export default async function CommitStoryPage({
           {story.headline}
         </h1>
         <p className="font-feed-body standfirst mb-2xl">{story.standfirst}</p>
+
+        {story.imageUrl && (
+          <div
+            className="relative w-full overflow-hidden rounded-md mb-2xl"
+            style={{ aspectRatio: '3/2' }}
+          >
+            <Image
+              src={story.imageUrl}
+              alt={story.headline}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, 672px"
+              unoptimized
+            />
+          </div>
+        )}
 
         <div className="font-feed-body text-foreground-secondary leading-relaxed whitespace-pre-line mb-2xl">
           {story.story}
