@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { Story } from '@/lib/stories';
 import { PRMetaRow } from './PRMetaRow';
 import { PRSubtitle, PRMobileReference } from './PRSubtitle';
@@ -42,6 +43,24 @@ export function PRArticle({
         commitUrl={story.kind === 'direct-push' ? story.commitUrl : undefined}
       />
       <p className="standfirst font-feed-body mb-10">{story.standfirst}</p>
+      {story.imageUrl && (
+        <div
+          className="relative w-full overflow-hidden rounded-md mb-10"
+          style={{ aspectRatio: '3/2' }}
+        >
+          <Image
+            src={story.imageUrl}
+            alt={story.headline}
+            fill
+            className="object-cover"
+            sizes={variant === 'panel' ? '(max-width: 768px) 100vw, 480px' : '(max-width: 768px) 100vw, 720px'}
+            // The full-page illustration is above the fold (likely LCP) — eager-load
+            // + preload it. The panel can open below the fold, so leave it lazy.
+            priority={variant === 'page'}
+            unoptimized
+          />
+        </div>
+      )}
       <PRStoryBody
         story={story.story}
         technicalDescription={story.technicalDescription || undefined}
