@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/znat/gitpulse/compare/v0.2.0...v0.3.0) (2026-06-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** AI_PROTOCOL/AI_MODEL/AI_BASE_URL/AI_TEMPERATURE, GITPULSE_BRANCH/GITPULSE_LIMIT, and the top-level bootstrapDays/ concurrency/releasesCap/includePrereleases fields are removed. Configure them via .gitpulse.json `text` and `analysis` instead. The publish-pages workflow's ai-*/scope inputs are removed.
+
+### Features
+
+* **cli:** move all non-secret config into .gitpulse.json ([#66](https://github.com/znat/gitpulse/issues/66)) ([eeb5515](https://github.com/znat/gitpulse/commit/eeb55155b29f684209e0128a4cb49d335b7152fa))
+
+
+### Bug Fixes
+
+* **cli:** derive Blob storeId from token to prevent URL drift ([#64](https://github.com/znat/gitpulse/issues/64)) ([439c74c](https://github.com/znat/gitpulse/commit/439c74c022ed0d88018bd916dbb48c505d6e7f6e))
+* **site:** show story illustrations on detail views + generate 1K images ([#67](https://github.com/znat/gitpulse/issues/67)) ([6486c23](https://github.com/znat/gitpulse/commit/6486c23213c3fb53e61d50447673c55240c12f59))
+
 ## [0.2.0](https://github.com/znat/gitpulse/compare/v0.1.6...v0.2.0) (2026-05-21)
 
 
