@@ -14,10 +14,19 @@ interface RouteParams {
   slug: string;
 }
 
+// Sentinel matching the OG route's stub, rendered as notFound below. Next's
+// `output: 'export'` rejects an empty params list, so a publication with no
+// direct-push stories (e.g. a PR-only repo) needs at least one stub param.
+const EMPTY_STUB_SHA = '__no_stories_yet__';
+const EMPTY_STUB_SLUG = 'placeholder';
+
 export function generateStaticParams(): RouteParams[] {
-  return loadStories()
+  const params = loadStories()
     .filter((s) => s.kind === 'direct-push')
     .map((s) => ({ sha: s.sha, slug: storyPathSlug(s.headline) }));
+  return params.length > 0
+    ? params
+    : [{ sha: EMPTY_STUB_SHA, slug: EMPTY_STUB_SLUG }];
 }
 
 export async function generateMetadata({

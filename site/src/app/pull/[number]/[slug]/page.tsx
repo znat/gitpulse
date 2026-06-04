@@ -12,13 +12,22 @@ interface RouteParams {
   slug: string;
 }
 
+// Sentinel matching the OG route's stub, rendered as notFound below. Next's
+// `output: 'export'` rejects an empty params list, so a publication with no
+// PR stories (e.g. a commit-only repo) needs at least one stub param.
+const EMPTY_STUB_NUMBER = '__no_stories_yet__';
+const EMPTY_STUB_SLUG = 'placeholder';
+
 export function generateStaticParams(): RouteParams[] {
-  return loadStories()
+  const params = loadStories()
     .filter((s) => s.kind === 'pr' && typeof s.prNumber === 'number')
     .map((s) => ({
       number: String(s.prNumber),
       slug: storyPathSlug(s.headline),
     }));
+  return params.length > 0
+    ? params
+    : [{ number: EMPTY_STUB_NUMBER, slug: EMPTY_STUB_SLUG }];
 }
 
 export async function generateMetadata({
